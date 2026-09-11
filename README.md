@@ -14,6 +14,15 @@ MacStorageLens 把 APFS/磁碟容量帳務、可遍歷資料樹、未解析空�
 - **開發者 / Author**：**Jason Chen**
 - **授權**：MIT
 
+
+## 畫面預覽
+
+### 儲存空間總覽
+
+![MacStorageLens 畫面預覽：顯示總容量、可回收估計與可鑽取的 Sunburst 視覺化](docs/screenshots/macstoragelens-storage-overview.png)
+
+上圖展示 MacStorageLens 的主畫面：左側提供總覽、資料樹、安全清理、掃描紀錄與設定等入口；中間以卡片整理總容量、已使用空間、真正空間與可回收估計；右側用可鑽取的 Sunburst 視覺化呈現 APFS 容量分布，讓使用者在執行清理前先理解空間結構與風險範圍。
+
 ## 主要功能
 
 - APFS / volume / free-space / directory-tree 容量分析與 Markdown 報告。
