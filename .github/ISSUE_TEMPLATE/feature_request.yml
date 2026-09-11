@@ -1,0 +1,23 @@
+name: Feature request
+description: Suggest an improvement
+title: "[Feature] "
+labels: [enhancement]
+body:
+  - type: textarea
+    id: usecase
+    attributes:
+      label: Use case
+      description: What problem should MacStorageLens solve?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed behavior
+    validations:
+      required: true
+  - type: textarea
+    id: safety
+    attributes:
+      label: Safety / data-loss considerations
+      description: Especially important for scan or cleanup behavior.

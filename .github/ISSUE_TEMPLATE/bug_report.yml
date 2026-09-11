@@ -1,0 +1,34 @@
+name: Bug report
+description: Report a reproducible MacStorageLens problem
+title: "[Bug] "
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: "Please remove private paths, filenames, credentials, and personal report contents before posting."
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      placeholder: "1.7.5 (Build 33)"
+    validations:
+      required: true
+  - type: input
+    id: macos
+    attributes:
+      label: macOS version / Mac model
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: What happened?
+      description: Include expected vs actual behavior and reproducible steps.
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Sanitized logs
+      description: Do not include tokens, private paths, or sensitive file contents.
+      render: shell

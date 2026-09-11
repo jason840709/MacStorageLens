@@ -1,0 +1,36 @@
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# SwiftPM / Xcode
+.build/
+.swiftpm/
+DerivedData/
+*.xcuserstate
+xcuserdata/
+*.dSYM
+
+# Local app artifacts
+dist/
+*.app
+
+# Python verification cache
+__pycache__/
+*.pyc
+
+# Editors
+.idea/
+.vscode/
+
+# Local credentials / signing material
+.env
+.env.*
+*.pem
+*.key
+*.p12
+*.pfx
+*.mobileprovision
+
+# Publisher/local logs
+.publish-logs/
