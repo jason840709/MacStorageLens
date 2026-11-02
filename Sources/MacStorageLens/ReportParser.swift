@@ -13,6 +13,7 @@ private final class UTF8LineReader {
   private var bufferFileOffset: UInt64
   private var reachedEOF = false
   private let chunkSize = 4 * 1024 * 1024
+  private var peekedLine: LineRecord?
 
   init(url: URL, offset: UInt64 = 0) throws {
     handle = try FileHandle(forReadingFrom: url)
@@ -26,7 +27,16 @@ private final class UTF8LineReader {
     try? handle.close()
   }
 
+  func peekLine() throws -> LineRecord? {
+    if peekedLine == nil { peekedLine = try nextLine() }
+    return peekedLine
+  }
+
   func nextLine() throws -> LineRecord? {
+    if let line = peekedLine {
+      peekedLine = nil
+      return line
+    }
     while true {
       if cursor < buffer.count,
         let newline = buffer[cursor...].firstIndex(of: 0x0A)
@@ -164,6 +174,8 @@ final class ReportParser {
     var summary = ScanSummary()
     var sections: [String: SectionRange] = [:]
     var topLevel: [String: [StorageNode]] = [:]
+    var directoryOffsets: [String: UInt64] = [:]
+    var directoryPathBytes = 0
     var currentH2 = ""
     var snapshotSet = Set<String>()
     var dfPhase: DFPhase?
@@ -299,7 +311,7 @@ final class ReportParser {
           continue
         }
 
-        let indexedDepth = initialPresentationRoot == activeRoot ? initialMaximumDepth : 1
+        let indexedDepth = max(8, initialPresentationRoot == activeRoot ? initialMaximumDepth : 1)
         let visualDepth = renderedTreeDepth(line)
         if let visualDepth, visualDepth > indexedDepth { continue }
         guard let fields = parseTreeLineComponents(line) else { continue }
@@ -322,6 +334,12 @@ final class ReportParser {
             )
           else { continue }
           relativeDepth = legacyDepth
+        }
+        if directoryOffsets.count < ReportDirectoryLookup.maximumEntries,
+          directoryPathBytes + path.utf8.count <= ReportDirectoryLookup.maximumPathBytes
+        {
+          directoryOffsets[path] = record.startOffset
+          directoryPathBytes += path.utf8.count
         }
         let node = StorageNode(path: path, allocatedKiB: fields.allocatedKiB)
         if relativeDepth == 1 {
@@ -647,8 +665,35 @@ final class ReportParser {
       summary: summary,
       sections: sections,
       topLevelNodes: topLevel,
-      initialPresentation: initialPresentation
+      initialPresentation: initialPresentation,
+      directoryLookup: ReportDirectoryLookup(offsets: directoryOffsets)
     )
+  }
+
+  /// Hints accelerate navigation, but the report row remains authoritative.
+  /// A corrupt or stale hint can only trigger the original sequential reader.
+  private func subtreeReader(
+    document: ReportDocument, section: SectionRange, path: String
+  ) throws -> UTF8LineReader {
+    var anchor = path
+    while anchor == section.root || anchor.hasPrefix(section.root == "/" ? "/" : section.root + "/")
+    {
+      if let offset = document.directoryLookup?.offsets[anchor] {
+        if offset >= section.startOffset && offset < section.endOffset {
+          let reader = try UTF8LineReader(url: document.url, offset: offset)
+          if let row = try reader.peekLine(), let fields = parseTreeLineComponents(row.text),
+            String(row.text[fields.pathRange]) == anchor
+          {
+            return reader
+          }
+        }
+        break
+      }
+      if anchor == section.root { break }
+      guard let slash = anchor.lastIndex(of: "/") else { break }
+      anchor = slash == anchor.startIndex ? "/" : String(anchor[..<slash])
+    }
+    return try UTF8LineReader(url: document.url, offset: section.startOffset)
   }
 
   func loadChildren(document: ReportDocument, parentPath: String) throws -> [StorageNode] {
@@ -659,7 +704,7 @@ final class ReportParser {
       throw ReportParserError.missingSection(parentPath)
     }
 
-    let reader = try UTF8LineReader(url: document.url, offset: section.startOffset)
+    let reader = try subtreeReader(document: document, section: section, path: parentPath)
     var parentRenderedDepth: Int?
     var children: [StorageNode] = []
     let parentSuffix = "  " + parentPath
@@ -713,7 +758,7 @@ final class ReportParser {
       throw ReportParserError.missingSection(rootPath)
     }
 
-    let reader = try UTF8LineReader(url: document.url, offset: section.startOffset)
+    let reader = try subtreeReader(document: document, section: section, path: rootPath)
     let descendantPrefix = rootPath == "/" ? "/" : rootPath + "/"
     var count = 0
     var foundRoot = false
@@ -754,7 +799,7 @@ final class ReportParser {
       throw ReportParserError.missingSection(parentPath)
     }
 
-    let reader = try UTF8LineReader(url: document.url, offset: section.startOffset)
+    let reader = try subtreeReader(document: document, section: section, path: parentPath)
     var records: [String: StorageNode] = [:]
     var parentRenderedDepth: Int?
     let parentSuffix = "  " + parentPath

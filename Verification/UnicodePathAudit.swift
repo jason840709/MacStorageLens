@@ -89,8 +89,13 @@ struct UnicodePathAudit {
     let configuration = CleanupScanConfiguration(
       profile: .custom, customScopes: [.standardCaches], customMinimumBytes: 0)
     let candidates = try engine.scanCandidates(configuration: configuration).candidates
+    // CleanupEngine standardizes its injected home. Native enumeration now
+    // preserves that root spelling instead of Foundation rewriting /tmp back
+    // to /private/tmp. Compare the same canonical identity, still requiring
+    // a real positive allocation under a C-locale parent process.
+    let expectedCachePath = cache.standardizedFileURL.path
     expect(
-      candidates.contains { $0.path == cache.path && $0.bytes > 0 },
+      candidates.contains { $0.path == expectedCachePath && $0.bytes > 0 },
       "cleanup scan preserves allocated size for a Chinese cache path")
     let unchanged = try Data(contentsOf: cache.appendingPathComponent("payload.bin"))
     expect(unchanged == payload, "cleanup scan does not modify fixture files")

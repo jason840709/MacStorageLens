@@ -55,7 +55,7 @@ struct CleanupIncrementalIndexAudit {
       profile: .conservative, customScopes: [], customMinimumBytes: 0)
     let balanced = CleanupScanConfiguration(
       profile: .balanced, customScopes: [], customMinimumBytes: 0)
-    check("cleanup_index_schema_is_6", CleanupIncrementalIndex.currentSchemaVersion == 6)
+    check("cleanup_index_schema_is_7", CleanupIncrementalIndex.currentSchemaVersion == 7)
 
     let legacyConfigurationData = Data(
       #"{"profile":"超激進","customScopes":[],"customMinimumBytes":0}"#.utf8

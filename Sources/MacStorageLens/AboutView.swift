@@ -70,9 +70,11 @@ struct AboutView: View {
             .foregroundStyle(.secondary)
         }
 
-        Text("由 \(AppMetadata.developer) 開發，與 \(AppMetadata.developmentAssistant) 協作。")
-          .font(.callout)
-          .foregroundStyle(.secondary)
+        Text(
+          "由 \(AppMetadata.developer) 開發，與 \(AppMetadata.developmentAssistant) 協作。早期版本與 GPT‑5.6 Pro 協作。"
+        )
+        .font(.callout)
+        .foregroundStyle(.secondary)
 
         HStack(spacing: 8) {
           LensStatusBadge(

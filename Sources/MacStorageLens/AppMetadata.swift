@@ -13,10 +13,10 @@ enum AppMetadata {
   static let displayName = "磁碟透視"
   static let productName = "MacStorageLens"
   static let developer = "Jason Chen"
-  static let developmentAssistant = "GPT‑5.6 Pro"
+  static let developmentAssistant = "GPT‑6.1 SOL（Codex 本機）"
   static let scannerVersion = "2.5.4"
-  static let fallbackVersion = "1.7.6"
-  static let fallbackBuild = "34"
+  static let fallbackVersion = "1.8.0"
+  static let fallbackBuild = "35"
   static let copyright = "Copyright © 2026 Jason Chen"
 
   static var version: String {
@@ -43,6 +43,12 @@ enum AppMetadata {
   static var hasStableCodeSigningIdentity: Bool { codeSigningMode == "identity" }
 
   static let releases: [AppRelease] = [
+    AppRelease(
+      version: "1.8.0",
+      title: "本機資料樹加速與清理保護",
+      summary:
+        "資料樹改用有上限、可驗證的目錄位置索引，加快深入目錄；保留原有 Markdown 報告與容量帳務。修正 macOS 隱藏 AppleDouble 列舉及 /var 路徑別名，並依本機 Mole 保護清單、共用開發環境與執行中 App 排除清理。掃描、舊候選重用與刪除前均套用保護；保護設定讀取失敗時停止可執行清理。"
+    ),
     AppRelease(
       version: "1.7.6",
       title: "中文路徑與 UTF-8 相容性修正",

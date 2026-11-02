@@ -8,8 +8,8 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-VERSION = "1.7.6"
-BUILD = 34
+VERSION = "1.8.0"
+BUILD = 35
 SCANNER = "2.5.4"
 
 checks: list[dict[str, object]] = []
@@ -106,12 +106,12 @@ build = texts["scripts/建立並啟動.command"]
 verify = texts["scripts/驗證原始碼.command"]
 
 # Release identity.
-check("metadata_version", 'fallbackVersion = "1.7.6"' in metadata)
-check("metadata_build", 'fallbackBuild = "34"' in metadata)
+check("metadata_version", 'fallbackVersion = "1.8.0"' in metadata)
+check("metadata_build", 'fallbackBuild = "35"' in metadata)
 check("metadata_scanner", 'scannerVersion = "2.5.4"' in metadata)
-check("build_version", 'APP_VERSION="1.7.6"' in build)
-check("build_number", 'APP_BUILD="34"' in build)
-check("release_history_has_1_7_6", 'version: "1.7.6"' in metadata)
+check("build_version", 'APP_VERSION="1.8.0"' in build)
+check("build_number", 'APP_BUILD="35"' in build)
+check("release_history_has_1_8_0", 'version: "1.8.0"' in metadata)
 check("build_scanner", 'SCANNER_VERSION="2.5.4"' in build)
 check("wrapper_version", 'VERSION="2.5.4"' in wrapper)
 check("core_version", 'VERSION="2.5.4"' in core)
@@ -178,7 +178,7 @@ check("overview_names_scanner_254", "Scanner 2.5.4" in overview)
 check("accounting_bar_titles_are_dynamic", "visibleTitle" in overview and "gapTitle" in overview)
 
 # Report presentation index and first-map loading contracts.
-check("report_index_schema", 'currentParserSchema = "report-presentation-1.7.0-v1"' in report_index)
+check("report_index_schema", 'currentParserSchema = "report-presentation-1.8.0-v1"' in report_index)
 check("report_index_signature_size", "let byteCount: UInt64" in report_index)
 check("report_index_signature_mtime", "let modificationNanoseconds: Int64" in report_index)
 check("report_index_signature_samples_head_middle_tail", all(token in report_index for token in [
@@ -250,7 +250,7 @@ check(
     "scope_external_paired_tier_balanced",
     "prioritizingExternalAppleDouble ? .balanced : .aggressive" in models,
 )
-check("cleanup_index_schema_6", "currentSchemaVersion = 6" in cleanup_index)
+check("cleanup_index_schema_7", "currentSchemaVersion = 7" in cleanup_index)
 check(
     "folder_remote_recycle_skip",
     'caseInsensitiveCompare("#recycle")' in folder
@@ -703,7 +703,7 @@ check("verify_runs_static_contract", "static_contract_audit.py" in verify)
 check("verify_runs_ui_enum_context", "ui_enum_context_audit.py" in verify)
 check("verify_runs_system_junk_integration", "system_junk_integration_audit.py" in verify)
 check("verify_runs_trash_bins_fixture", "TrashBinsCleanupAudit.swift" in verify)
-check("verify_uses_1_7_6_provenance", "provenance_audit_1_7_6.py" in verify)
+check("verify_uses_1_8_0_provenance", "provenance_audit_1_8_0.py" in verify)
 check("verify_runs_release_build_on_macos", "swift build -c release" in verify)
 
 # No accidental network/telemetry additions in the changed core.

@@ -43,6 +43,8 @@ struct SystemJunkLiveRevalidationAudit {
 
     try installApp(name: "Baseline", bundleID: "com.example.Baseline")
     let leftover = try mkdir("Library/Caches/com.example.ReturningApp")
+    _ = try write(
+      "Library/Caches/com.example.ReturningApp/cache.bin", data: Data(repeating: 1, count: 8192))
     let partial = try write("Downloads/archive.crdownload", data: Data(repeating: 1, count: 4096))
     try fm.setAttributes(
       [.modificationDate: Date().addingTimeInterval(-26 * 60 * 60)],

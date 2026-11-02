@@ -5,8 +5,8 @@ set -euo pipefail
 ROOT="$(cd -P "$(dirname "$0")/.." && pwd -P)"
 cd "$ROOT"
 
-APP_VERSION="1.7.6"
-APP_BUILD="34"
+APP_VERSION="1.8.0"
+APP_BUILD="35"
 SCANNER_VERSION="2.5.4"
 BUNDLE_ID="local.macstoragelens.app"
 
@@ -115,7 +115,7 @@ cat > "$APP/Contents/Info.plist" <<PLIST
     <key>CFBundleExecutable</key>
     <string>MacStorageLens</string>
     <key>CFBundleGetInfoString</key>
-    <string>MacStorageLens ${APP_VERSION} — Jason Chen，使用 GPT-5.6 Pro 協作開發</string>
+    <string>MacStorageLens ${APP_VERSION} — Jason Chen，與 GPT-6.1 SOL 在 Codex 本機協作開發</string>
     <key>CFBundleIconFile</key>
     <string>MacStorageLens.icns</string>
     <key>CFBundleIdentifier</key>

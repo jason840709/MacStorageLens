@@ -22,6 +22,8 @@ final class CleanupEngine {
   private let privateRoot: URL
   private let volumesRoot: URL
   private let currentUserID: UInt32
+  private var protection: CleanupProtectionPolicy
+  private var incompleteSizePaths: Set<String> = []
 
   init(
     library: ReportLibrary,
@@ -35,6 +37,7 @@ final class CleanupEngine {
     self.library = library
     self.fileManager = fileManager
     self.home = (homeURL ?? fileManager.homeDirectoryForCurrentUser).standardizedFileURL
+    protection = CleanupProtectionPolicy(home: self.home)
     self.localLibrary = localLibraryURL.standardizedFileURL
     self.privateRoot = privateRootURL.standardizedFileURL
     self.volumesRoot = volumesRootURL.standardizedFileURL
@@ -74,8 +77,10 @@ final class CleanupEngine {
       }
     }
 
+    protection = CleanupProtectionPolicy(home: home)
+    incompleteSizePaths.removeAll()
     let startedAt = Date()
-    var notices: [String] = []
+    var notices: [String] = protection.notices
     let steps = scanSteps(configuration: configuration, notices: &notices)
     var candidates: [CleanupCandidate] = []
 
@@ -102,6 +107,12 @@ final class CleanupEngine {
         totalSteps: steps.count
       ))
 
+    if !incompleteSizePaths.isEmpty {
+      let examples = incompleteSizePaths.sorted().prefix(3).joined(separator: "、")
+      notices.append("有 \(incompleteSizePaths.count) 個目錄無法完整計算容量，已排除其不完整估計（權限或連線）：\(examples)")
+    }
+    let protectedCount = candidates.filter { protection.rejectionReason(for: $0) != nil }.count
+    if protectedCount > 0 { notices.append("已依保護設定略過 \(protectedCount) 個候選；未計入可清理容量。") }
     candidates = normalizedCandidates(candidates, configuration: configuration)
     return CleanupScanResult(
       configuration: configuration,
@@ -140,8 +151,10 @@ final class CleanupEngine {
     configuration: CleanupScanConfiguration,
     mode: CleanupMode
   ) -> [CleanupCandidate] {
+    let policy = CleanupProtectionPolicy(home: home)
+    let permitted = indexedCandidates.filter { policy.rejectionReason(for: $0) == nil }
     if mode == .system {
-      return normalizedCandidates(indexedCandidates, configuration: configuration)
+      return normalizedCandidates(permitted, configuration: configuration)
     }
 
     let effectiveMinimum = configuration.effectiveMinimumBytes(for: .generalLocation)
@@ -151,7 +164,7 @@ final class CleanupEngine {
       .folderLegacySpotlightTrashResidue,
       .folderLegacyFSEventsTrashResidue,
     ]
-    return indexedCandidates.filter { candidate in
+    return permitted.filter { candidate in
       guard configuration.includes(tier: candidate.tier, scope: candidate.scope) else {
         return false
       }
@@ -198,6 +211,7 @@ final class CleanupEngine {
       }
       entries = selected.map { candidate in
         do {
+          try CleanupProtectionPolicy(home: home).validate(candidate)
           switch candidate.action {
           case .moveContentsToTrash:
             return try moveContentsToTrash(candidate)
@@ -224,6 +238,7 @@ final class CleanupEngine {
       }
       entries = selected.map { candidate in
         do {
+          try CleanupProtectionPolicy(home: home).validate(candidate)
           return try directlyDelete(candidate, targetCapabilities: targetCapabilities)
         } catch {
           return failedLogEntry(candidate, mode: .forceDelete, error: error)
@@ -766,13 +781,13 @@ final class CleanupEngine {
         displayName: "Homebrew 官方 cleanup",
         bytes: estimated,
         risk: .moderate,
-        reason: "使用 brew cleanup --prune=all 移除過期下載、舊版本與 stale lock；先以 dry-run 估算。",
-        impact: "舊版 formula／cask 與全部可清 download cache 會被永久移除，之後可能重新下載。",
+        reason: "使用 brew cleanup 移除過期下載、舊版本與 stale lock；先以 dry-run 估算。",
+        impact: "符合 Homebrew 預設保留期限的舊版本與下載快取會被永久移除，之後可能重新下載。",
         recovery: "需要時由 Homebrew 重新下載；此動作不是移到垃圾桶。",
         managedCommand: ManagedCleanupCommand(
           executable: brew,
-          arguments: ["cleanup", "--prune=all"],
-          displayCommand: "brew cleanup --prune=all",
+          arguments: ["cleanup"],
+          displayCommand: "brew cleanup",
           timeoutSeconds: 600
         )
       )
@@ -1218,11 +1233,7 @@ final class CleanupEngine {
       throw CleanupValidationError.rejected("無法確認廢紙簍所在裝置：\(root.path)")
     }
 
-    let items = try fileManager.contentsOfDirectory(
-      at: root,
-      includingPropertiesForKeys: [.isDirectoryKey, .isRegularFileKey, .isSymbolicLinkKey],
-      options: [.skipsSubdirectoryDescendants]
-    )
+    let items = try NativeFileSystem.contentsOfDirectory(at: root)
     return items.filter { item in
       let source = item.standardizedFileURL
       guard source.deletingLastPathComponent().standardizedFileURL.path == root.path,
@@ -1381,11 +1392,7 @@ final class CleanupEngine {
 
   private func moveContentsToTrash(_ candidate: CleanupCandidate) throws -> CleanupLog.Entry {
     let source = try validatedSource(for: candidate)
-    let children = try fileManager.contentsOfDirectory(
-      at: source,
-      includingPropertiesForKeys: [.isSymbolicLinkKey],
-      options: [.skipsSubdirectoryDescendants]
-    )
+    let children = try NativeFileSystem.contentsOfDirectory(at: source)
     var moved: [String] = []
     var failures: [String] = []
     var notes: [String] = []
@@ -1572,11 +1579,7 @@ final class CleanupEngine {
     targetCapabilities: CleanupTargetCapabilities
   ) throws -> CleanupLog.Entry {
     let source = try validatedSource(for: candidate)
-    let children = try fileManager.contentsOfDirectory(
-      at: source,
-      includingPropertiesForKeys: [.isSymbolicLinkKey],
-      options: [.skipsSubdirectoryDescendants]
-    )
+    let children = try NativeFileSystem.contentsOfDirectory(at: source)
     var deleted: [String] = []
     var failures: [String] = []
     for child in children {
@@ -2231,7 +2234,7 @@ final class CleanupEngine {
     switch rule {
     case .homebrewCleanup:
       guard executable.lastPathComponent == "brew",
-        command.arguments == ["cleanup", "--prune=all"]
+        command.arguments == ["cleanup"]
       else { throw CleanupValidationError.rejected(command.displayCommand) }
     case .condaCleanup:
       guard executable.lastPathComponent == "conda",
@@ -2250,6 +2253,7 @@ final class CleanupEngine {
     configuration: CleanupScanConfiguration
   ) -> [CleanupCandidate] {
     var candidates = raw.filter { candidate in
+      guard protection.rejectionReason(for: candidate) == nil else { return false }
       guard configuration.includes(tier: candidate.tier, scope: candidate.scope) else {
         return false
       }
@@ -2397,10 +2401,7 @@ final class CleanupEngine {
     var archives: [URL] = []
     for dateDirectory in immediateDirectories(in: root) {
       let children =
-        ((try? fileManager.contentsOfDirectory(
-          at: dateDirectory,
-          includingPropertiesForKeys: [.isDirectoryKey, .isSymbolicLinkKey],
-          options: [.skipsHiddenFiles])) ?? [])
+        ((try? NativeFileSystem.contentsOfDirectory(at: dateDirectory, skipHidden: true)) ?? [])
       for child in children where child.pathExtension.lowercased() == "xcarchive" {
         if safeDirectoryExists(child) { archives.append(child) }
       }
@@ -2412,11 +2413,8 @@ final class CleanupEngine {
     guard safeDirectoryExists(root) else { return [] }
     let keys: Set<URLResourceKey> = [.isDirectoryKey, .isSymbolicLinkKey]
     return
-      ((try? fileManager.contentsOfDirectory(
-        at: root,
-        includingPropertiesForKeys: Array(keys),
-        options: [.skipsHiddenFiles]
-      )) ?? []).filter { url in
+      ((try? NativeFileSystem.contentsOfDirectory(at: root, skipHidden: true)) ?? []).filter {
+        url in
         guard let values = try? url.resourceValues(forKeys: keys) else { return false }
         return values.isDirectory == true && values.isSymbolicLink != true
           && !isSymbolicLink(at: url)
@@ -2430,12 +2428,11 @@ final class CleanupEngine {
       .contentModificationDateKey, .creationDateKey,
     ]
     let items =
-      (try? fileManager.contentsOfDirectory(
-        at: root,
-        includingPropertiesForKeys: keys,
-        options: [.skipsSubdirectoryDescendants]
-      )) ?? []
+      (try? NativeFileSystem.contentsOfDirectory(at: root)) ?? []
     return items.filter { item in
+      // Sidecars belong to the dedicated AppleDouble scanner, not Downloads
+      // or corrupt-preference rules that classify ordinary files by extension.
+      guard !item.lastPathComponent.hasPrefix("._") else { return false }
       guard let values = try? item.resourceValues(forKeys: Set(keys)) else { return false }
       return values.isSymbolicLink != true && !isSymbolicLink(at: item)
         && (values.isDirectory == true || values.isRegularFile == true)
@@ -2521,26 +2518,10 @@ final class CleanupEngine {
   }
 
   private func allocatedSizes(for urls: [URL]) throws -> [String: Int64] {
-    guard !urls.isEmpty else { return [:] }
-    var output: [String: Int64] = [:]
-    let batchSize = 80
-
-    for start in stride(from: 0, to: urls.count, by: batchSize) {
-      let end = min(start + batchSize, urls.count)
-      let batch = Array(urls[start..<end])
-      // du must return the original path so the size can be matched to its URL.
-      let result = try ProcessRunner.run(
-        "/usr/bin/env", ["LC_ALL=en_US.UTF-8", "/usr/bin/du", "-sk"] + batch.map(\.path),
-        timeout: 240)
-      for line in result.stdoutString.split(separator: "\n", omittingEmptySubsequences: true) {
-        guard let tab = line.firstIndex(of: "\t"), let kiB = Int64(line[..<tab]) else {
-          continue
-        }
-        let path = String(line[line.index(after: tab)...])
-        output[path] = kiB * 1024
-      }
-    }
-    return output
+    let urls = urls.filter { protection.reason(for: $0.path) == nil }
+    let measurement = try AllocatedSizeReader.measure(urls)
+    incompleteSizePaths.formUnion(measurement.incompletePaths)
+    return measurement.bytesByPath
   }
 
   private func firstExecutable(named name: String, knownPaths: [String]) -> String? {

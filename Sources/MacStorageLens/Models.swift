@@ -447,12 +447,25 @@ struct ReportInitialPresentation: Hashable, Codable {
   let sunburst: SunburstItem
 }
 
+/// Immutable lookup shared by document copies; identity hashing avoids walking
+/// thousands of paths every time SwiftUI compares a presentation value.
+final class ReportDirectoryLookup: Hashable, Codable {
+  static let maximumEntries = 30_000
+  static let maximumPathBytes = 2 * 1024 * 1024
+  let offsets: [String: UInt64]
+
+  init(offsets: [String: UInt64]) { self.offsets = offsets }
+  static func == (lhs: ReportDirectoryLookup, rhs: ReportDirectoryLookup) -> Bool { lhs === rhs }
+  func hash(into hasher: inout Hasher) { hasher.combine(ObjectIdentifier(self)) }
+}
+
 struct ReportDocument: Hashable {
   let url: URL
   let summary: ScanSummary
   let sections: [String: SectionRange]
   let topLevelNodes: [String: [StorageNode]]
   let initialPresentation: ReportInitialPresentation?
+  var directoryLookup: ReportDirectoryLookup? = nil
 
   func section(containing path: String) -> SectionRange? {
     sections.values

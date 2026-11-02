@@ -97,13 +97,13 @@ checks = {
         and "configuration.requiresScope(scope)" in engine
         and "case .highImpactUserData, .trashBins, .systemManagedReview:\n      return limit >= .ultraAggressive" not in engine
     ),
-    "release identity 1.7.6 build 34": (
-        'fallbackVersion = "1.7.6"' in metadata
-        and 'fallbackBuild = "34"' in metadata
-        and 'APP_VERSION="1.7.6"' in build
-        and 'APP_BUILD="34"' in build
+    "release identity 1.8.0 build 35": (
+        'fallbackVersion = "1.8.0"' in metadata
+        and 'fallbackBuild = "35"' in metadata
+        and 'APP_VERSION="1.8.0"' in build
+        and 'APP_BUILD="35"' in build
     ),
-    "incremental index schema bumped": "currentSchemaVersion = 6" in index,
+    "incremental index schema bumped": "currentSchemaVersion = 7" in index,
     "excluded broad caches filtered before sizing": (
         engine.find("shouldExcludeStandardUserCache") < engine.find("let sizes = try allocatedSizes(for: directories)")
     ),

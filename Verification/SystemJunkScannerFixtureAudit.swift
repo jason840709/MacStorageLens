@@ -41,6 +41,10 @@ struct SystemJunkScannerFixtureAudit {
 
     _ = try mkdir("Library/Caches/com.example.Installed")
     _ = try mkdir("Library/Caches/com.example.OldApp")
+    // APFS empty directories occupy zero blocks. Give positive cleanup fixtures
+    // real contents instead of depending on Linux directory block allocation.
+    _ = try write(
+      "Library/Caches/com.example.OldApp/cache.bin", data: Data(repeating: 1, count: 8192))
     _ = try mkdir("Library/Caches/com.apple.Safari")
     _ = try mkdir("Library/Caches/org.chromium.Chromium")
     _ = try mkdir("Library/Caches/com.google.Keystone")
@@ -51,6 +55,9 @@ struct SystemJunkScannerFixtureAudit {
     _ = try mkdir("Library/Caches/.com.foo.Hidden")
     _ = try mkdir("Library/Caches/com..foo.Malformed")
     _ = try mkdir("Library/Saved Application State/com.example.OldState.savedState")
+    _ = try write(
+      "Library/Saved Application State/com.example.OldState.savedState/state.bin",
+      data: Data(repeating: 1, count: 8192))
 
     let oldPartial = try write("Downloads/video.crdownload", data: Data(repeating: 1, count: 1024))
     let freshPartial = try write("Downloads/current.part", data: Data(repeating: 2, count: 1024))

@@ -32,6 +32,7 @@ final class FolderCleanupEngine {
 
   private let fileManager: FileManager
   private let home: URL
+  private var protection: CleanupProtectionPolicy
   private let appleDoubleInspector: AppleDoubleInspector
   private let targetCapabilityResolver: (ScanTarget) -> CleanupTargetCapabilities
 
@@ -43,6 +44,7 @@ final class FolderCleanupEngine {
   ) {
     self.fileManager = fileManager
     home = (homeURL ?? fileManager.homeDirectoryForCurrentUser).standardizedFileURL
+    protection = CleanupProtectionPolicy(home: home)
     appleDoubleInspector = AppleDoubleInspector(fileManager: fileManager)
     self.targetCapabilityResolver = targetCapabilityResolver
   }
@@ -52,12 +54,13 @@ final class FolderCleanupEngine {
     target: ScanTarget,
     progress: ProgressHandler? = nil
   ) throws -> CleanupScanResult {
+    protection = CleanupProtectionPolicy(home: home)
     let startedAt = Date()
     let root = try validatedRoot(for: target)
     let targetCapabilities = targetCapabilityResolver(target)
     let prioritizesExternalAppleDouble =
       targetCapabilities.prioritizesExternalAppleDoubleCleanup
-    var notices: [String] = []
+    var notices: [String] = protection.notices
     var groups: [CleanupRuleID: MatchGroup] = [:]
     var appleDoubleTally = AppleDoubleTally()
     var visited = 0
@@ -92,10 +95,8 @@ final class FolderCleanupEngine {
     )
 
     guard
-      let enumerator = fileManager.enumerator(
+      let enumerator = NativeFileSystem.enumerator(
         at: root,
-        includingPropertiesForKeys: resourceKeys,
-        options: [.skipsPackageDescendants],
         errorHandler: { url, error in
           diagnostics += 1
           if notices.count < 20 {
@@ -109,6 +110,10 @@ final class FolderCleanupEngine {
     }
 
     while let url = enumerator.nextObject() as? URL {
+      if protection.reason(for: url.path, includingDescendants: false) != nil {
+        enumerator.skipDescendants()
+        continue
+      }
       visited += 1
       let values: URLResourceValues
       do {
@@ -319,6 +324,7 @@ final class FolderCleanupEngine {
     parser: ReportParser,
     progress: ProgressHandler? = nil
   ) throws -> CleanupScanResult {
+    protection = CleanupProtectionPolicy(home: home)
     let startedAt = Date()
     let root = try validatedRoot(for: target)
     let targetCapabilities = targetCapabilityResolver(target)
@@ -339,7 +345,7 @@ final class FolderCleanupEngine {
       throw CleanupValidationError.rejected("既有容量報告缺少 DIRECTORY_TREE，無法建立快速清理索引。")
     }
 
-    var notices: [String] = []
+    var notices: [String] = protection.notices
     var groups: [CleanupRuleID: MatchGroup] = [:]
     var appleDoubleTally = AppleDoubleTally()
     var visitedDirectories = 0
@@ -399,6 +405,10 @@ final class FolderCleanupEngine {
       under: reportRootPath
     ) { node in
       guard let directory = liveURL(for: node.path) else { return }
+      if protection.reason(for: directory.path, includingDescendants: false) != nil {
+        block(directory)
+        return
+      }
       let directoryPath = directory.path
       guard !isBlocked(directoryPath) else { return }
       guard directoryPath == root.path || isStrictDescendant(directory, of: root) else {
@@ -478,11 +488,7 @@ final class FolderCleanupEngine {
       let entries: [URL]
       if needsNameListing {
         do {
-          entries = try fileManager.contentsOfDirectory(
-            at: directory,
-            includingPropertiesForKeys: [],
-            options: []
-          )
+          entries = try NativeFileSystem.contentsOfDirectory(at: directory)
         } catch {
           diagnostics += 1
           if notices.count < 20 {
@@ -636,6 +642,7 @@ final class FolderCleanupEngine {
     scanSource: CleanupScanSource = .existingStorageReport,
     progress: ProgressHandler? = nil
   ) throws -> CleanupScanResult {
+    protection = CleanupProtectionPolicy(home: home)
     let startedAt = Date()
     let root = try validatedRoot(for: target)
     let targetCapabilities = targetCapabilityResolver(target)
@@ -644,13 +651,14 @@ final class FolderCleanupEngine {
     let rootPath = root.path
     var groups: [CleanupRuleID: MatchGroup] = [:]
     var appleDoubleTally = AppleDoubleTally()
-    var notices: [String] = []
+    var notices: [String] = protection.notices
     var inspectedDirectories = 0
     var inspectedEntries = 0
     var diagnostics = 0
 
     let validDirectories = directoryPaths.compactMap { path -> URL? in
       let url = URL(fileURLWithPath: path, isDirectory: true).standardizedFileURL
+      guard protection.reason(for: url.path, includingDescendants: false) == nil else { return nil }
       guard url.path == rootPath || isStrictDescendant(url, of: root) else { return nil }
       guard
         !containsServerRecycleComponent(
@@ -720,11 +728,7 @@ final class FolderCleanupEngine {
         needsAppleDoubleListing || (directory.path == rootPath && needsMacManagedRootListing)
       if needsNameListing {
         do {
-          entries = try fileManager.contentsOfDirectory(
-            at: directory,
-            includingPropertiesForKeys: [],
-            options: []
-          )
+          entries = try NativeFileSystem.contentsOfDirectory(at: directory)
         } catch {
           diagnostics += 1
           if notices.count < 20 {
@@ -1111,11 +1115,7 @@ final class FolderCleanupEngine {
     for trashRoot in possibleTrashRoots where fileManager.fileExists(atPath: trashRoot.path) {
       let children: [URL]
       do {
-        children = try fileManager.contentsOfDirectory(
-          at: trashRoot,
-          includingPropertiesForKeys: [.isDirectoryKey, .isSymbolicLinkKey, .isHiddenKey],
-          options: []
-        )
+        children = try NativeFileSystem.contentsOfDirectory(at: trashRoot)
       } catch {
         notices.append(
           "無法核對舊版隱藏垃圾桶殘留：\(trashRoot.path)：\(error.localizedDescription)"
@@ -1204,6 +1204,9 @@ final class FolderCleanupEngine {
     let root = try validatedRoot(for: rootTarget)
     let targetCapabilities = targetCapabilityResolver(rootTarget)
     let source = URL(fileURLWithPath: path).standardizedFileURL
+    if let reason = CleanupProtectionPolicy(home: home).reason(for: source.path) {
+      throw CleanupProtectionError.rejected(reason)
+    }
     guard
       !containsServerRecycleComponent(
         source,
@@ -1583,6 +1586,7 @@ final class FolderCleanupEngine {
     rule: CleanupRuleID,
     groups: inout [CleanupRuleID: MatchGroup]
   ) {
+    guard protection.reason(for: url.path) == nil else { return }
     var group = groups[rule] ?? MatchGroup()
     let path = url.standardizedFileURL.path
     guard group.pathSet.insert(path).inserted else { return }
@@ -1614,10 +1618,8 @@ final class FolderCleanupEngine {
       .fileSizeKey, .fileAllocatedSizeKey, .totalFileAllocatedSizeKey,
     ]
     guard
-      let enumerator = fileManager.enumerator(
+      let enumerator = NativeFileSystem.enumerator(
         at: root,
-        includingPropertiesForKeys: keys,
-        options: [.skipsPackageDescendants],
         errorHandler: { _, _ in true }
       )
     else { return 0 }

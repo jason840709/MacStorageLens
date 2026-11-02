@@ -19,7 +19,7 @@ struct CleanupIncrementalIndexStatus: Hashable {
 }
 
 struct CleanupIncrementalIndex: Codable, Hashable {
-  static let currentSchemaVersion = 6
+  static let currentSchemaVersion = 7
 
   let schemaVersion: Int
   let target: ScanTarget

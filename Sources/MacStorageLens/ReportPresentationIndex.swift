@@ -87,8 +87,8 @@ struct ReportFileSignature: Codable, Hashable {
 }
 
 struct ReportPresentationIndexPayload: Codable, Hashable {
-  static let currentSchemaVersion = 2
-  static let currentParserSchema = "report-presentation-1.7.0-v1"
+  static let currentSchemaVersion = 3
+  static let currentParserSchema = "report-presentation-1.8.0-v1"
 
   let schemaVersion: Int
   let parserSchema: String
@@ -99,6 +99,7 @@ struct ReportPresentationIndexPayload: Codable, Hashable {
   let sections: [String: SectionRange]
   let topLevelNodes: [String: [StorageNode]]
   let initialPresentation: ReportInitialPresentation
+  var directoryLookup: ReportDirectoryLookup?
 
   init(
     reportURL: URL,
@@ -116,6 +117,7 @@ struct ReportPresentationIndexPayload: Codable, Hashable {
     sections = document.sections
     topLevelNodes = document.topLevelNodes
     self.initialPresentation = initialPresentation
+    directoryLookup = document.directoryLookup
   }
 
   func document(for reportURL: URL) -> ReportDocument {
@@ -124,7 +126,8 @@ struct ReportPresentationIndexPayload: Codable, Hashable {
       summary: summary,
       sections: sections,
       topLevelNodes: topLevelNodes,
-      initialPresentation: initialPresentation
+      initialPresentation: initialPresentation,
+      directoryLookup: directoryLookup
     )
   }
 
@@ -162,6 +165,20 @@ struct ReportPresentationIndexPayload: Codable, Hashable {
             && node.parentPath == root
         })
       else { return false }
+    }
+
+    if let offsets = directoryLookup?.offsets {
+      guard offsets.count <= ReportDirectoryLookup.maximumEntries,
+        offsets.keys.reduce(0, { $0 + $1.utf8.count }) <= ReportDirectoryLookup.maximumPathBytes
+      else { return false }
+      for (path, offset) in offsets {
+        guard
+          let section = sections.values.filter({
+            path == $0.root || path.hasPrefix($0.root == "/" ? "/" : $0.root + "/")
+          }).max(by: { $0.root.count < $1.root.count }),
+          offset >= section.startOffset, offset < section.endOffset
+        else { return false }
+      }
     }
 
     var nodeCount = 0
@@ -264,7 +281,7 @@ struct ReportPresentationIndexStore {
   ) throws -> URL? {
     guard let initialPresentation = document.initialPresentation else { return nil }
     let signature = try ReportFileSignature.read(from: reportURL, fileManager: fileManager)
-    let payload = ReportPresentationIndexPayload(
+    var payload = ReportPresentationIndexPayload(
       reportURL: reportURL,
       reportSignature: signature,
       document: document,
@@ -273,7 +290,12 @@ struct ReportPresentationIndexStore {
     let encoder = JSONEncoder()
     encoder.dateEncodingStrategy = .millisecondsSince1970
     encoder.outputFormatting = [.sortedKeys]
-    let data = try encoder.encode(payload)
+    var data = try encoder.encode(payload)
+    if data.count > 16 * 1024 * 1024 {
+      payload.directoryLookup = nil
+      data = try encoder.encode(payload)
+    }
+    guard data.count <= 16 * 1024 * 1024 else { return nil }
     let destination = indexURL(for: reportURL)
     try data.write(to: destination, options: .atomic)
     try? fileManager.setAttributes([.posixPermissions: 0o600], ofItemAtPath: destination.path)

@@ -44,11 +44,11 @@ verify = read("scripts/驗證原始碼.command")
 source_review = read("docs/MACSAI_SOURCE_REVIEW.md")
 notices = read("THIRD_PARTY_NOTICES.md")
 
-check("metadata_version", 'fallbackVersion = "1.7.6"' in metadata)
-check("metadata_build", 'fallbackBuild = "34"' in metadata)
+check("metadata_version", 'fallbackVersion = "1.8.0"' in metadata)
+check("metadata_build", 'fallbackBuild = "35"' in metadata)
 check("developer", 'developer = "Jason Chen"' in metadata and "Jason Chen" in build)
 check("scanner_version", 'scannerVersion = "2.5.4"' in metadata)
-check("build_identity", 'APP_VERSION="1.7.6"' in build and 'APP_BUILD="34"' in build)
+check("build_identity", 'APP_VERSION="1.8.0"' in build and 'APP_BUILD="35"' in build)
 check("six_profiles_preserved", all(name in models for name in [
     'case ultraConservative = "超級保守"', 'case conservative = "保守"',
     'case balanced = "平衡"', 'case aggressive = "激進"',
@@ -77,7 +77,7 @@ check("trash_bins_current_uid", "String(currentUserID)" in cleanup and "~/.Trash
 check("trash_bins_direct_only", "filemanager_remove_validated_current_user_trash_matches" in cleanup)
 check("trash_bins_external_root_validation", "validateExternalVolumeRoot" in cleanup and "volumesRootURL" in external_executor)
 check("trash_bins_not_default_custom", ".trashBins" not in app_model.split("@Published var cleanupFolderCustomScopes", 1)[0].split("@Published var cleanupCustomScopes", 1)[1])
-check("cleanup_index_schema_6", "currentSchemaVersion = 6" in index)
+check("cleanup_index_schema_7", "currentSchemaVersion = 7" in index)
 check("source_review_present", "MacSai source review" in source_review and "Trash" in source_review)
 check("bsd_notice_present", "BSD 3-Clause" in notices and (ROOT / "ThirdParty/MacSai-LICENSE.txt").is_file())
 check("system_junk_knowledge_present", "enum SystemJunkKnowledge" in knowledge)
@@ -96,15 +96,15 @@ if not (ROOT / ".git").is_dir():
 else:
     try:
         head = run("git", "rev-parse", "HEAD")
-        if subprocess.run(["git", "rev-parse", "--verify", "-q", "v1.7.6^{commit}"], cwd=ROOT).returncode == 0:
-            tagged = run("git", "rev-parse", "v1.7.6^{commit}")
+        if subprocess.run(["git", "rev-parse", "--verify", "-q", "v1.8.0^{commit}"], cwd=ROOT).returncode == 0:
+            tagged = run("git", "rev-parse", "v1.8.0^{commit}")
             ancestor = subprocess.run(["git", "merge-base", "--is-ancestor", tagged, head], cwd=ROOT).returncode == 0
-            check("tag_v1_7_6_is_ancestor", ancestor, f"{tagged} <= {head}")
+            check("tag_v1_8_0_is_ancestor", ancestor, f"{tagged} <= {head}")
             paths = ["Package.swift", "Sources", "Resources", "scripts", "Verification"]
             matches = subprocess.run(["git", "diff", "--quiet", tagged, "--", *paths], cwd=ROOT).returncode == 0
-            check("tag_v1_7_6_matches_release_code", matches)
+            check("tag_v1_8_0_matches_release_code", matches)
         else:
-            skip("tag_v1_7_6_points_to_head", "尚未建立 v1.7.6 tag。")
+            skip("tag_v1_8_0_points_to_head", "尚未建立 v1.8.0 tag。")
 
     except Exception as exc:
         check("git_provenance", False, str(exc))
@@ -113,8 +113,8 @@ passed = sum(1 for item in checks if item["status"] == "passed")
 failed = sum(1 for item in checks if item["status"] == "failed")
 not_run = sum(1 for item in checks if item["status"] == "not_run")
 payload = {
-    "version": "1.7.6",
-    "build": 34,
+    "version": "1.8.0",
+    "build": 35,
     "passed": passed,
     "failed": failed,
     "notRun": not_run,
