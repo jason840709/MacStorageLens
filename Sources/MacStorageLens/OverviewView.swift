@@ -347,7 +347,7 @@ private struct CapacityLegendItem: View {
 
   @Environment(\.colorScheme) private var colorScheme
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
-  @State private var isHovered = false
+  @LensState private var isHovered = false
 
   var body: some View {
     HStack(spacing: 6) {
@@ -381,7 +381,7 @@ private struct CompactMetric: View {
 
   @Environment(\.colorScheme) private var colorScheme
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
-  @State private var hovered = false
+  @LensState private var hovered = false
 
   var body: some View {
     VStack(alignment: .leading, spacing: 8) {
@@ -428,7 +428,7 @@ private struct CompactMetric: View {
 private struct ScanQualityCard: View {
   let summary: ScanSummary
 
-  @State private var showsTechnicalDetails = false
+  @LensState private var showsTechnicalDetails = false
 
   private var coverageTitle: String {
     summary.hasPartialCoverage ? "部分" : "完整"
@@ -465,7 +465,7 @@ private struct ScanQualityCard: View {
   private var accessExplanation: String {
     if summary.targetKind != .system {
       return
-        "外接磁碟與指定資料夾只讀取使用者明確選擇的位置；Scanner 2.5.3 不再為這類掃描探測 Mail、Messages、Safari 或 AddressBook，因此完整磁碟存取狀態標示為不適用。"
+        "外接磁碟與指定資料夾只讀取使用者明確選擇的位置；Scanner 2.5.4 不再為這類掃描探測 Mail、Messages、Safari 或 AddressBook，因此完整磁碟存取狀態標示為不適用。"
     }
     if summary.hasAmbiguousLegacyAdministratorProbe {
       return
@@ -704,7 +704,7 @@ private struct ReconciliationCard: View {
               HStack(alignment: .firstTextBaseline, spacing: 10) {
                 if summary.totalDurationSeconds > 0 {
                   Label(
-                    "Scanner 2.5.3：總計 \(summary.totalDurationSeconds) 秒 · 資料樹 \(summary.pathScanDurationSeconds) 秒",
+                    "Scanner 2.5.4：總計 \(summary.totalDurationSeconds) 秒 · 資料樹 \(summary.pathScanDurationSeconds) 秒",
                     systemImage: "stopwatch"
                   )
                   .font(.caption2.monospacedDigit())
@@ -805,7 +805,7 @@ private struct ReconciliationCard: View {
         ? ".Trashes、.Spotlight-V100、.fseventsd 等"
         : summary.volumeVolatileMetadataNames.joined(separator: "、")
       return
-        "外接卷宗的完整已用容量仍由 df 保留；為避免垃圾桶內的舊索引、Spotlight／FSEvents 重建資料在每次掃描時被再次遞迴遍歷，Scanner 2.5.3 不展開 \(names)。這些容量會留在紫色帳務區，不代表全部可清理；安全清理頁會另外辨識精確候選。"
+        "外接卷宗的完整已用容量仍由 df 保留；為避免垃圾桶內的舊索引、Spotlight／FSEvents 重建資料在每次掃描時被再次遞迴遍歷，Scanner 2.5.4 不展開 \(names)。這些容量會留在紫色帳務區，不代表全部可清理；安全清理頁會另外辨識精確候選。"
     }
     return "未解析差額可能混合不可讀路徑、快照專屬區塊、APFS metadata、clone／hard-link 語意與開啟中的檔案；它不等於可清理容量。"
   }
@@ -867,7 +867,7 @@ private struct ReconciliationMetric: View {
 
   @Environment(\.colorScheme) private var colorScheme
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
-  @State private var hovered = false
+  @LensState private var hovered = false
 
   var body: some View {
     VStack(alignment: .leading, spacing: 6) {
@@ -945,7 +945,7 @@ private struct DetailPill: View {
 
   @Environment(\.colorScheme) private var colorScheme
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
-  @State private var isHovered = false
+  @LensState private var isHovered = false
 
   var body: some View {
     HStack(spacing: 6) {
@@ -1132,7 +1132,7 @@ private struct OverviewLegendRow: View {
 
   @Environment(\.colorScheme) private var colorScheme
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
-  @State private var isHovered = false
+  @LensState private var isHovered = false
 
   var body: some View {
     HStack(spacing: 10) {
@@ -1307,7 +1307,7 @@ private struct ReportStatusBanner: View {
 
   @Environment(\.colorScheme) private var colorScheme
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
-  @State private var hovered = false
+  @LensState private var hovered = false
 
   private var hasActions: Bool {
     !isBusy && (primaryAction != nil || secondaryAction != nil)

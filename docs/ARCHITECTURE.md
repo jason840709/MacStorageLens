@@ -2,7 +2,7 @@
 
 ## Overview
 
-MacStorageLens 1.7.5 separates read-only discovery, presentation, cleanup policy, and destructive execution. This prevents a storage report from becoming deletion authority.
+MacStorageLens 1.7.6 separates read-only discovery, presentation, cleanup policy, and destructive execution. This prevents a storage report from becoming deletion authority.
 
 ```text
 MacStorageLensApp / AppShell
@@ -34,7 +34,7 @@ Sunburst / CapacityMap
 
 ## Read-only scanner
 
-`Resources/mac-system-storage-tree-v2.5.3.command` is the wrapper and `mac-system-storage-tree-core-v2.5.3.command` is the core scanner. `ScannerLauncher` coordinates invocation and progress parsing. The scanner produces Markdown/key-value sections consumed by `ReportParser`.
+`Resources/mac-system-storage-tree-v2.5.4.command` is the wrapper and `mac-system-storage-tree-core-v2.5.4.command` is the core scanner. `ScannerLauncher` coordinates invocation and progress parsing. The scanner produces Markdown/key-value sections consumed by `ReportParser`.
 
 The UI does not treat unexplained APFS/accounting differences as automatically reclaimable space.
 

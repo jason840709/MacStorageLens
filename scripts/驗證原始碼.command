@@ -6,8 +6,8 @@ ROOT="$(cd -P "$(dirname "$0")/.." && pwd -P)"
 cd "$ROOT"
 
 printf '%s\n' \
-  'MacStorageLens 1.7.5 原始碼驗證' \
-  '只會編譯、解析與讀取測試 fixture；不會掃描、清理或修改磁碟內容。' \
+  'MacStorageLens 1.7.6 原始碼驗證' \
+  '只會編譯並操作暫存測試資料；不會掃描或清理你的實際資料。' \
   ''
 
 if ! command -v swift >/dev/null 2>&1; then
@@ -434,8 +434,26 @@ swiftc \
   -o "$TMP/trash-bins-cleanup-audit"
 "$TMP/trash-bins-cleanup-audit" >/dev/null
 
-printf '[35/36] 1.7.5 公開來源與 tag provenance\n'
-python3 Verification/provenance_audit_1_7_5.py "$TMP/provenance-result.json" >/dev/null
+printf '[Unicode] 中文路徑端到端與清理容量 fixture\n'
+swiftc \
+  Sources/MacStorageLens/Models.swift \
+  Sources/MacStorageLens/ProcessRunner.swift \
+  Sources/MacStorageLens/ReportParser.swift \
+  Sources/MacStorageLens/ReportPresentationIndex.swift \
+  Sources/MacStorageLens/ReportLibrary.swift \
+  Sources/MacStorageLens/AppleDoubleInspector.swift \
+  Sources/MacStorageLens/FolderCleanupEngine.swift \
+  Sources/MacStorageLens/FinderVisibleTrash.swift \
+  Sources/MacStorageLens/ExternalVolumeCleanupExecutor.swift \
+  Sources/MacStorageLens/CleanupTargetCapabilities.swift \
+  Sources/MacStorageLens/CleanupEngine.swift \
+  Sources/MacStorageLens/SystemJunkKnowledge.swift \
+  Verification/UnicodePathAudit.swift \
+  -o "$TMP/unicode-path-audit"
+/usr/bin/env LC_ALL=C "$TMP/unicode-path-audit"
+
+printf '[35/36] 1.7.6 公開來源與 tag provenance\n'
+python3 Verification/provenance_audit_1_7_6.py "$TMP/provenance-result.json" >/dev/null
 if [[ ! -d .git ]]; then
   printf '      來源封裝不含 .git；公開來源 provenance 已通過。\n'
 fi

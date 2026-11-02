@@ -5,7 +5,7 @@ struct ScanFlowSheet: View {
   @Environment(\.dismiss) private var dismiss
   @Environment(\.colorScheme) private var colorScheme
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
-  @State private var isConfirmingCancellation = false
+  @LensState private var isConfirmingCancellation = false
 
   var body: some View {
     VStack(spacing: 0) {
@@ -258,7 +258,7 @@ struct ScanFlowSheet: View {
             Text("不需要探測 Mac 的受保護使用者資料")
               .font(.headline)
             Text(
-              "這次只讀取「\(model.selectedScanTarget.displayName)」。Scanner 2.5.3 不會在開始外接磁碟或資料夾掃描前探測 Mail、Messages、Safari 或 AddressBook，也不會為非 APFS 目標查詢整台 Mac 的 APFS 清單。"
+              "這次只讀取「\(model.selectedScanTarget.displayName)」。Scanner 2.5.4 不會在開始外接磁碟或資料夾掃描前探測 Mail、Messages、Safari 或 AddressBook，也不會為非 APFS 目標查詢整台 Mac 的 APFS 清單。"
             )
             .font(.caption)
             .foregroundStyle(.secondary)
@@ -655,7 +655,7 @@ struct ScanFlowSheet: View {
         Divider().opacity(0.55)
 
         VStack(alignment: .leading, spacing: 7) {
-          Text("Scanner 2.5.3 階段")
+          Text("Scanner 2.5.4 階段")
             .font(.caption.weight(.semibold))
             .foregroundStyle(.secondary)
           HStack(spacing: 7) {

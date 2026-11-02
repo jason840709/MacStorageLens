@@ -65,9 +65,9 @@ struct SunburstChart: View {
 
   @Environment(\.colorScheme) private var colorScheme
   @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
-  @State private var hoveredArcID: String?
-  @State private var contextArcID: String?
-  @State private var hoverLocation: CGPoint?
+  @LensState private var hoveredArcID: String?
+  @LensState private var contextArcID: String?
+  @LensState private var hoverLocation: CGPoint?
 
   init(
     root: SunburstItem,

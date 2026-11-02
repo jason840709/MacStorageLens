@@ -2,7 +2,7 @@
 emulate -L zsh
 
 # macOS read-only storage tree generator
-# Core Version 2.5.3
+# Core Version 2.5.4
 #
 # This script only reads filesystem/APFS metadata and creates one Markdown report.
 # It never deletes, moves, truncates, repairs, thins, flushes, or modifies user or
@@ -17,7 +17,7 @@ export LC_ALL=C
 # "2 seconds" even when the App had visibly waited twenty seconds.
 PROCESS_START_EPOCH="$(/bin/date +%s)"
 
-VERSION="2.5.3"
+VERSION="2.5.4"
 LARGE_FILE_MIB=500
 LARGE_FILE_SCAN_MODE="no"   # ask | yes | no
 LARGE_FILE_HEARTBEAT_SECONDS=15
@@ -887,7 +887,9 @@ for root in "${ROOTS[@]}"; do
 
   (
     root_du_status=0
-    run_privileged /usr/bin/du -xk "${DU_IGNORE_ARGS[@]}" "$root" > "$raw" 2> "$err" || root_du_status=$?
+    # Recent macOS du replaces non-ASCII paths with '?' in the C locale.
+    # Set UTF-8 after privilege escalation; retain C for report sorting/parsing.
+    run_privileged /usr/bin/env LC_ALL=en_US.UTF-8 /usr/bin/du -xk "${DU_IGNORE_ARGS[@]}" "$root" > "$raw" 2> "$err" || root_du_status=$?
     printf '%s\n' "$root_du_status" > "$du_done.tmp"
     /bin/mv "$du_done.tmp" "$du_done"
   ) &

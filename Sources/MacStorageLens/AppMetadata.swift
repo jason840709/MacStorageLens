@@ -14,9 +14,9 @@ enum AppMetadata {
   static let productName = "MacStorageLens"
   static let developer = "Jason Chen"
   static let developmentAssistant = "GPT‑5.6 Pro"
-  static let scannerVersion = "2.5.3"
-  static let fallbackVersion = "1.7.5"
-  static let fallbackBuild = "33"
+  static let scannerVersion = "2.5.4"
+  static let fallbackVersion = "1.7.6"
+  static let fallbackBuild = "34"
   static let copyright = "Copyright © 2026 Jason Chen"
 
   static var version: String {
@@ -43,6 +43,12 @@ enum AppMetadata {
   static var hasStableCodeSigningIdentity: Bool { codeSigningMode == "identity" }
 
   static let releases: [AppRelease] = [
+    AppRelease(
+      version: "1.7.6",
+      title: "中文路徑與 UTF-8 相容性修正",
+      summary:
+        "修正較新 macOS 的 du 指令在 C 語系下將中文及其他 Unicode 路徑替換為問號，造成資料樹、Sunburst 與 Finder 路徑失真的問題。核心掃描、App TCC 覆蓋與安全清理容量讀取均明確指定 UTF-8；報告數字格式、排序與既有資料格式維持相容。更新後請重新掃描受影響的位置；舊報告中的問號無法還原為原始名稱，磁碟中的實際名稱與檔案內容不受此問題影響。"
+    ),
     AppRelease(
       version: "1.7.5",
       title: "系統垃圾規則深度整合與廢紙簍清理",

@@ -8,8 +8,8 @@
 
 MacStorageLens 把 APFS/磁碟容量帳務、可遍歷資料樹、未解析空間差額與清理候選分開呈現；清理採白名單規則、風險分級、使用者明確選取與執行前重新驗證，不把「看不懂的系統資料」直接當成垃圾。
 
-- **版本**：1.7.5（Build 33）
-- **Scanner**：2.5.3
+- **版本**：1.7.6（Build 34）
+- **Scanner**：2.5.4
 - **最低系統**：macOS 14
 - **開發者 / Author**：**Jason Chen**
 - **授權**：MIT
@@ -104,9 +104,9 @@ MacStorageLens 不是「一鍵刪除器」。清理遵循以下原則：
 
 詳見 [`SECURITY.md`](SECURITY.md)。
 
-## 1.7.5
+## 1.7.6
 
-1.7.5 把 MacSai source-reviewed 的 System Junk/Trash Bins 研究整合回既有六級模型，並將廢紙簍處理限制在目前 UID、明確外接卷宗範圍與 direct-only 高風險流程。完整 release notes：[`docs/release-notes/1.7.5.md`](docs/release-notes/1.7.5.md)。
+修正較新 macOS 上中文及其他 Unicode 資料夾名稱變成問號的問題。更新後請重新掃描受影響位置；已經寫成問號的舊報告無法還原名稱。沿用原始碼 ZIP 與既有 SwiftPM 建置入口，沒有新增套件依賴。完整 release notes：[`docs/release-notes/1.7.6.md`](docs/release-notes/1.7.6.md)。
 
 ## 第三方來源
 

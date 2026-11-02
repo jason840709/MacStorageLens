@@ -176,7 +176,7 @@ private struct ReportCard: View {
 
 struct SettingsView: View {
   @EnvironmentObject private var model: AppModel
-  @State private var showsCleanupBoundary = false
+  @LensState private var showsCleanupBoundary = false
 
   var body: some View {
     ScrollView {
@@ -450,7 +450,7 @@ private struct SettingsActionRow<Content: View>: View {
   private let content: Content
 
   @Environment(\.colorScheme) private var colorScheme
-  @State private var hovered = false
+  @LensState private var hovered = false
 
   init(
     symbol: String,
@@ -506,7 +506,7 @@ private struct SettingsInfoButton: View {
   let action: () -> Void
 
   @Environment(\.colorScheme) private var colorScheme
-  @State private var hovered = false
+  @LensState private var hovered = false
 
   var body: some View {
     Button(action: action) {

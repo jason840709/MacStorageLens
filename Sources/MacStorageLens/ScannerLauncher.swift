@@ -367,7 +367,8 @@ final class ScanSession {
         "$(/bin/date +%s)" "$ROOT" >> "$PROGRESS"
 
       du_status=0
-      /usr/bin/du -xk -I 'MacStorageLens' "$ROOT" > "$RAW" 2>> "$ERR" &
+      # Preserve Unicode paths even when the App inherits a C locale.
+      /usr/bin/env LC_ALL=en_US.UTF-8 /usr/bin/du -xk -I 'MacStorageLens' "$ROOT" > "$RAW" 2>> "$ERR" &
       ACTIVE_PID=$!
       started="$(/bin/date +%s)"
       while /bin/kill -0 "$ACTIVE_PID" >/dev/null 2>&1; do
@@ -1286,7 +1287,7 @@ struct ScannerLauncher {
     }
     _ = try installScanner()
     let installedCore = library.scannerURL.appendingPathComponent(
-      "mac-system-storage-tree-core-v2.5.3.command")
+      "mac-system-storage-tree-core-v2.5.4.command")
     guard FileManager.default.fileExists(atPath: installedCore.path) else {
       throw ScannerLauncherError.resourceMissing
     }
@@ -1347,9 +1348,9 @@ struct ScannerLauncher {
     }
 
     let wrapperDestination = library.scannerURL.appendingPathComponent(
-      "mac-system-storage-tree-v2.5.3.command")
+      "mac-system-storage-tree-v2.5.4.command")
     let coreDestination = library.scannerURL.appendingPathComponent(
-      "mac-system-storage-tree-core-v2.5.3.command")
+      "mac-system-storage-tree-core-v2.5.4.command")
 
     let currentScannerNames = Set([
       wrapperDestination.lastPathComponent, coreDestination.lastPathComponent,
@@ -1395,15 +1396,15 @@ struct ScannerLauncher {
 
   private func bundledScannerURL() -> URL? {
     bundledResource(
-      resourceName: "mac-system-storage-tree-v2.5.3",
-      developmentPath: "Resources/mac-system-storage-tree-v2.5.3.command"
+      resourceName: "mac-system-storage-tree-v2.5.4",
+      developmentPath: "Resources/mac-system-storage-tree-v2.5.4.command"
     )
   }
 
   private func bundledScannerCoreURL() -> URL? {
     bundledResource(
-      resourceName: "mac-system-storage-tree-core-v2.5.3",
-      developmentPath: "Resources/mac-system-storage-tree-core-v2.5.3.command"
+      resourceName: "mac-system-storage-tree-core-v2.5.4",
+      developmentPath: "Resources/mac-system-storage-tree-core-v2.5.4.command"
     )
   }
 

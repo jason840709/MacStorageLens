@@ -146,14 +146,17 @@ with tempfile.TemporaryDirectory(prefix="MacStorageLens-compiler-regression-") a
     scanner_source = ROOT / "Sources/MacStorageLens/ScannerLauncher.swift"
     scanner_inputs: list[str] = []
     if sys.platform == "darwin":
-        scanner_inputs.append(str(scanner_source))
+        scanner_inputs.extend([
+            str(scanner_source),
+            str(ROOT / "Sources/MacStorageLens/AppMetadata.swift"),
+        ])
     else:
         portable_scanner = tmp / "ScannerLauncherPortable.swift"
         portable_text = scanner_source.read_text(encoding="utf-8")
         portable_text = portable_text.replace("import AppKit\n", "")
         portable_text = portable_text.replace("import Darwin\n", "import Glibc\n")
         portable_text = portable_text.replace("AppMetadata.version", '"1.6.8"')
-        portable_text = portable_text.replace("AppMetadata.scannerVersion", '"2.5.3"')
+        portable_text = portable_text.replace("AppMetadata.scannerVersion", '"2.5.4"')
         portable_scanner.write_text(portable_text, encoding="utf-8")
         appkit_shim = tmp / "AppKitShim.swift"
         appkit_shim.write_text(

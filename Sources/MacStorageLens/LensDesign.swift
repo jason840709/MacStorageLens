@@ -172,7 +172,7 @@ private struct LensButtonStyleBody<Label: View>: View {
   @Environment(\.colorScheme) private var colorScheme
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
   @Environment(\.isEnabled) private var isEnabled
-  @State private var isHovered = false
+  @LensState private var isHovered = false
 
   var body: some View {
     label
@@ -273,7 +273,7 @@ private struct LensIconButtonStyleBody<Label: View>: View {
   @Environment(\.colorScheme) private var colorScheme
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
   @Environment(\.isEnabled) private var isEnabled
-  @State private var isHovered = false
+  @LensState private var isHovered = false
 
   var body: some View {
     label
@@ -328,7 +328,7 @@ struct LensMenuControlLabel: View {
 
   @Environment(\.colorScheme) private var colorScheme
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
-  @State private var isHovered = false
+  @LensState private var isHovered = false
 
   var body: some View {
     HStack(spacing: compact ? 8 : 10) {
@@ -581,7 +581,7 @@ private struct LensHoverHelpModifier: ViewModifier {
   let tint: Color
   let placement: LensHoverHelpPlacement
 
-  @State private var isHovered = false
+  @LensState private var isHovered = false
 
   func body(content: Content) -> some View {
     content
@@ -653,8 +653,8 @@ struct LensSegmentedBar: View {
   var accessibilityTitle: String = "容量組成"
 
   @Environment(\.colorScheme) private var colorScheme
-  @State private var hoveredID: String?
-  @State private var hoverLocation: CGPoint?
+  @LensState private var hoveredID: String?
+  @LensState private var hoverLocation: CGPoint?
 
   var body: some View {
     GeometryReader { proxy in
@@ -810,7 +810,7 @@ private struct LensRowButtonStyleBody<Label: View>: View {
 
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
   @Environment(\.isEnabled) private var isEnabled
-  @State private var isHovered = false
+  @LensState private var isHovered = false
 
   var body: some View {
     label

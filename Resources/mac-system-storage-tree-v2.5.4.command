@@ -2,9 +2,9 @@
 emulate -L zsh
 
 # MacStorageLens read-only storage scanner supervisor
-# Version 2.5.3
+# Version 2.5.4
 #
-# This wrapper runs the 2.5.3 read-only tree scanner, converts its human-readable
+# This wrapper runs the 2.5.4 read-only tree scanner, converts its human-readable
 # output into structured progress events, monitors heartbeat/liveness, supports a
 # cooperative cancel file, and removes only an incomplete report created by this
 # run. It never deletes, moves, repairs, thins, flushes, or modifies user/system data.
@@ -13,7 +13,7 @@ set -u
 umask 077
 export LC_ALL=C
 
-VERSION="2.5.3"
+VERSION="2.5.4"
 PROGRESS_FILE=""
 CONTROL_DIR=""
 HEARTBEAT_SECONDS=5
@@ -25,7 +25,7 @@ CORE_ARGS=()
 usage() {
   cat <<'EOF'
 Usage:
-  mac-system-storage-tree-v2.5.3.command [scanner options]
+  mac-system-storage-tree-v2.5.4.command [scanner options]
 
 MacStorageLens integration options:
   --progress-file PATH          Append structured progress events to PATH.
@@ -129,7 +129,7 @@ if [[ "$(/usr/bin/uname -s)" != "Darwin" ]]; then
 fi
 
 SCRIPT_DIR="$(cd -P "$(/usr/bin/dirname "$0")" && pwd -P)"
-CORE="$SCRIPT_DIR/mac-system-storage-tree-core-v2.5.3.command"
+CORE="$SCRIPT_DIR/mac-system-storage-tree-core-v2.5.4.command"
 if [[ ! -f "$CORE" ]]; then
   printf 'ERROR: missing scanner core: %s\n' "$CORE" >&2
   exit 1

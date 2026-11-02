@@ -131,7 +131,7 @@ struct ExternalVolumeCleanupAudit {
     let models = try source("Sources/MacStorageLens/Models.swift")
     let appModel = try source("Sources/MacStorageLens/AppModel.swift")
     let cleaner = try source("Sources/MacStorageLens/CleanerView.swift")
-    let scanner = try source("Resources/mac-system-storage-tree-core-v2.5.3.command")
+    let scanner = try source("Resources/mac-system-storage-tree-core-v2.5.4.command")
     let build = try source("scripts/建立並啟動.command")
 
     check(

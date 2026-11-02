@@ -97,11 +97,11 @@ checks = {
         and "configuration.requiresScope(scope)" in engine
         and "case .highImpactUserData, .trashBins, .systemManagedReview:\n      return limit >= .ultraAggressive" not in engine
     ),
-    "release identity 1.7.5 build 33": (
-        'fallbackVersion = "1.7.5"' in metadata
-        and 'fallbackBuild = "33"' in metadata
-        and 'APP_VERSION="1.7.5"' in build
-        and 'APP_BUILD="33"' in build
+    "release identity 1.7.6 build 34": (
+        'fallbackVersion = "1.7.6"' in metadata
+        and 'fallbackBuild = "34"' in metadata
+        and 'APP_VERSION="1.7.6"' in build
+        and 'APP_BUILD="34"' in build
     ),
     "incremental index schema bumped": "currentSchemaVersion = 6" in index,
     "excluded broad caches filtered before sizing": (

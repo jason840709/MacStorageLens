@@ -2528,7 +2528,10 @@ final class CleanupEngine {
     for start in stride(from: 0, to: urls.count, by: batchSize) {
       let end = min(start + batchSize, urls.count)
       let batch = Array(urls[start..<end])
-      let result = try ProcessRunner.run("/usr/bin/du", ["-sk"] + batch.map(\.path), timeout: 240)
+      // du must return the original path so the size can be matched to its URL.
+      let result = try ProcessRunner.run(
+        "/usr/bin/env", ["LC_ALL=en_US.UTF-8", "/usr/bin/du", "-sk"] + batch.map(\.path),
+        timeout: 240)
       for line in result.stdoutString.split(separator: "\n", omittingEmptySubsequences: true) {
         guard let tab = line.firstIndex(of: "\t"), let kiB = Int64(line[..<tab]) else {
           continue

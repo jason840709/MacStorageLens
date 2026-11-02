@@ -2,7 +2,7 @@ import SwiftUI
 
 struct AboutView: View {
   @EnvironmentObject private var model: AppModel
-  @State private var showsReleaseHistory = false
+  @LensState private var showsReleaseHistory = false
 
   var body: some View {
     ScrollView {
@@ -249,7 +249,7 @@ private struct AboutCopyFact: View {
   let tint: Color
 
   @Environment(\.colorScheme) private var colorScheme
-  @State private var hovered = false
+  @LensState private var hovered = false
 
   var body: some View {
     Button {

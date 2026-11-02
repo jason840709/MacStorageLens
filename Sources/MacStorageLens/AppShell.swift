@@ -4,7 +4,7 @@ import UniformTypeIdentifiers
 
 struct ContentView: View {
   @EnvironmentObject private var model: AppModel
-  @State private var showingImporter = false
+  @LensState private var showingImporter = false
 
   var body: some View {
     NavigationSplitView {
@@ -173,7 +173,7 @@ private struct SidebarNavigationRow: View {
 
   @Environment(\.colorScheme) private var colorScheme
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
-  @State private var isHovered = false
+  @LensState private var isHovered = false
 
   var body: some View {
     Button(action: action) {
@@ -237,7 +237,7 @@ private struct SidebarCapacityCard: View {
   let capacity: LiveCapacity?
 
   @Environment(\.colorScheme) private var colorScheme
-  @State private var hovered = false
+  @LensState private var hovered = false
 
   var body: some View {
     VStack(alignment: .leading, spacing: 10) {

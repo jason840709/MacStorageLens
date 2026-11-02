@@ -7,8 +7,8 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-VERSION = "1.7.5"
-BUILD = 33
+VERSION = "1.7.6"
+BUILD = 34
 
 
 def balanced_block(text: str, open_brace: int) -> str:

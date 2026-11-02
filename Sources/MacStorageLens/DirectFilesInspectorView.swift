@@ -5,7 +5,7 @@ struct DirectFilesInspectorView: View {
   @EnvironmentObject private var model: AppModel
   @Environment(\.dismiss) private var dismiss
   @Environment(\.colorScheme) private var colorScheme
-  @State private var query = ""
+  @LensState private var query = ""
 
   var body: some View {
     VStack(spacing: 0) {
@@ -233,7 +233,7 @@ private struct InspectorMetric: View {
 private struct DirectFileRow: View {
   @EnvironmentObject private var model: AppModel
   @Environment(\.colorScheme) private var colorScheme
-  @State private var isHovered = false
+  @LensState private var isHovered = false
 
   let entry: DirectFileEntry
 

@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.7.6 — 2026-11-03 — 中文路徑與 UTF-8 相容性修正
+
+- 修正較新 macOS 的 `du` 在 `LC_ALL=C` 下將中文及其他 Unicode 路徑輸出為問號，導致資料樹、Sunburst 與 Finder 路徑失真的問題。
+- 核心掃描在權限切換後，及 App TCC 覆蓋、安全清理容量讀取時，明確指定 `en_US.UTF-8`；既有報告數字格式與位元組排序維持 C locale。
+- 新增真正執行核心／監督器、解析報告及讀取清理候選容量的 Unicode fixture，涵蓋同字數不同中文名稱、混合語言、emoji、組合字元與 shell 特殊字元。
+- 以 `LensState` alias 保留原有 SwiftUI property-wrapper 行為，修正 macOS 27 獨立 Command Line Tools 缺少 State macro plugin 時無法建置的問題；macOS 14 最低需求維持不變。
+- 舊報告中已被替換的名稱需在更新後重新掃描；報告格式、舊報告解析與清理索引 schema 維持相容。
+- 沿用 SwiftPM、macOS 14 最低需求與原始碼 ZIP 發佈方式，沒有新增外部套件。
+- App：1.7.6 / Build 34；Scanner：2.5.4。
+
 ## 1.7.5 — 2026-08-26 — 系統垃圾規則深度整合與廢紙簍
 
 - 重新以 MacSai 實際 Swift source／tests 為依據完成 System Junk knowledge integration；嚴格 App orphan、corrupt plist、下載殘留、Xcode／IDE／AI／package-manager cache allowlist，以及 Spotify／Gradle／shared-runtime／user-data negative rules 都由 MacStorageLens 自己的 policy 與 executor 實作。

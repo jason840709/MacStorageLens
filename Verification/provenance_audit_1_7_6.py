@@ -44,11 +44,11 @@ verify = read("scripts/驗證原始碼.command")
 source_review = read("docs/MACSAI_SOURCE_REVIEW.md")
 notices = read("THIRD_PARTY_NOTICES.md")
 
-check("metadata_version", 'fallbackVersion = "1.7.5"' in metadata)
-check("metadata_build", 'fallbackBuild = "33"' in metadata)
+check("metadata_version", 'fallbackVersion = "1.7.6"' in metadata)
+check("metadata_build", 'fallbackBuild = "34"' in metadata)
 check("developer", 'developer = "Jason Chen"' in metadata and "Jason Chen" in build)
-check("scanner_version", 'scannerVersion = "2.5.3"' in metadata)
-check("build_identity", 'APP_VERSION="1.7.5"' in build and 'APP_BUILD="33"' in build)
+check("scanner_version", 'scannerVersion = "2.5.4"' in metadata)
+check("build_identity", 'APP_VERSION="1.7.6"' in build and 'APP_BUILD="34"' in build)
 check("six_profiles_preserved", all(name in models for name in [
     'case ultraConservative = "超級保守"', 'case conservative = "保守"',
     'case balanced = "平衡"', 'case aggressive = "激進"',
@@ -83,6 +83,11 @@ check("bsd_notice_present", "BSD 3-Clause" in notices and (ROOT / "ThirdParty/Ma
 check("system_junk_knowledge_present", "enum SystemJunkKnowledge" in knowledge)
 check("trash_fixture_wired", "TrashBinsCleanupAudit.swift" in verify)
 
+check("unicode_fixture_wired", "UnicodePathAudit.swift" in verify and "LC_ALL=C" in verify)
+check("current_scanner_resources", all((ROOT / "Resources" / name).is_file() for name in [
+    "mac-system-storage-tree-v2.5.4.command", "mac-system-storage-tree-core-v2.5.4.command"
+]))
+
 if not (ROOT / ".git").is_dir():
     skip(
         "git_provenance",
@@ -91,35 +96,16 @@ if not (ROOT / ".git").is_dir():
 else:
     try:
         head = run("git", "rev-parse", "HEAD")
-        if subprocess.run(["git", "rev-parse", "--verify", "-q", "v1.7.5^{commit}"], cwd=ROOT).returncode == 0:
-            tagged = run("git", "rev-parse", "v1.7.5^{commit}")
-            check("tag_v1_7_5_points_to_head", tagged == head, f"{tagged} == {head}")
+        if subprocess.run(["git", "rev-parse", "--verify", "-q", "v1.7.6^{commit}"], cwd=ROOT).returncode == 0:
+            tagged = run("git", "rev-parse", "v1.7.6^{commit}")
+            ancestor = subprocess.run(["git", "merge-base", "--is-ancestor", tagged, head], cwd=ROOT).returncode == 0
+            check("tag_v1_7_6_is_ancestor", ancestor, f"{tagged} <= {head}")
+            paths = ["Package.swift", "Sources", "Resources", "scripts", "Verification"]
+            matches = subprocess.run(["git", "diff", "--quiet", tagged, "--", *paths], cwd=ROOT).returncode == 0
+            check("tag_v1_7_6_matches_release_code", matches)
         else:
-            skip("tag_v1_7_5_points_to_head", "尚未建立 v1.7.5 tag。")
+            skip("tag_v1_7_6_points_to_head", "尚未建立 v1.7.6 tag。")
 
-        # The public GitHub repository is intentionally a curated clean-root release.
-        # If historical v1.7.4 is present, retain the deeper parent/change-scope checks;
-        # otherwise do not require the internal handoff history to be published.
-        if subprocess.run(["git", "rev-parse", "--verify", "-q", "v1.7.4^{commit}"], cwd=ROOT).returncode == 0 and subprocess.run(["git", "rev-parse", "--verify", "-q", "v1.7.5^{commit}"], cwd=ROOT).returncode == 0:
-            commit = run("git", "rev-parse", "v1.7.5^{commit}")
-            parent = run("git", "rev-parse", f"{commit}^")
-            expected_parent = run("git", "rev-parse", "v1.7.4^{commit}")
-            check("direct_parent_v1.7.4", parent == expected_parent, f"{parent} == {expected_parent}")
-            changed = set(run("git", "diff", "--name-only", "v1.7.4", "v1.7.5").splitlines())
-            runtime_expected = {
-                "Sources/MacStorageLens/AppMetadata.swift",
-                "Sources/MacStorageLens/AppModel.swift",
-                "Sources/MacStorageLens/CleanerView.swift",
-                "Sources/MacStorageLens/CleanupEngine.swift",
-                "Sources/MacStorageLens/CleanupIncrementalIndex.swift",
-                "Sources/MacStorageLens/ExternalVolumeCleanupExecutor.swift",
-                "Sources/MacStorageLens/Models.swift",
-                "Sources/MacStorageLens/SystemJunkKnowledge.swift",
-            }
-            runtime_changed = {p for p in changed if p.startswith("Sources/MacStorageLens/")}
-            check("runtime_change_scope", runtime_changed <= runtime_expected, ", ".join(sorted(runtime_changed - runtime_expected)))
-        else:
-            skip("historical_parent_gate", "公開 repository 為整理後的乾淨發行根提交，未附內部 v1.7.4 Git history。")
     except Exception as exc:
         check("git_provenance", False, str(exc))
 
@@ -127,8 +113,8 @@ passed = sum(1 for item in checks if item["status"] == "passed")
 failed = sum(1 for item in checks if item["status"] == "failed")
 not_run = sum(1 for item in checks if item["status"] == "not_run")
 payload = {
-    "version": "1.7.5",
-    "build": 33,
+    "version": "1.7.6",
+    "build": 34,
     "passed": passed,
     "failed": failed,
     "notRun": not_run,

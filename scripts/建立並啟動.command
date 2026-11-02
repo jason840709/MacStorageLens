@@ -5,9 +5,9 @@ set -euo pipefail
 ROOT="$(cd -P "$(dirname "$0")/.." && pwd -P)"
 cd "$ROOT"
 
-APP_VERSION="1.7.5"
-APP_BUILD="33"
-SCANNER_VERSION="2.5.3"
+APP_VERSION="1.7.6"
+APP_BUILD="34"
+SCANNER_VERSION="2.5.4"
 BUNDLE_ID="local.macstoragelens.app"
 
 printf '%s\n' \

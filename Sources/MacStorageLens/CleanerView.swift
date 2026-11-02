@@ -2,7 +2,7 @@ import SwiftUI
 
 struct CleanerView: View {
   @EnvironmentObject private var model: AppModel
-  @State private var pendingExecutionMode: CleanupExecutionMode?
+  @LensState private var pendingExecutionMode: CleanupExecutionMode?
 
   var body: some View {
     VStack(spacing: 0) {
@@ -427,7 +427,7 @@ private struct CleanupProfileSummaryStrip: View {
   @EnvironmentObject private var model: AppModel
   @Environment(\.colorScheme) private var colorScheme
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
-  @State private var showsRules = false
+  @LensState private var showsRules = false
 
   var body: some View {
     VStack(alignment: .leading, spacing: 11) {
@@ -780,7 +780,7 @@ private struct CleanupProfileCard: View {
 
   @Environment(\.colorScheme) private var colorScheme
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
-  @State private var hovered = false
+  @LensState private var hovered = false
 
   var body: some View {
     Button(action: action) {
@@ -1316,7 +1316,7 @@ private struct CleanupCandidateRow: View {
 
   @Environment(\.colorScheme) private var colorScheme
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
-  @State private var hovered = false
+  @LensState private var hovered = false
 
   private var hasFinderPath: Bool {
     finderPath.hasPrefix("/") && FileManager.default.fileExists(atPath: finderPath)
@@ -1640,10 +1640,10 @@ private struct CleanupConfirmationSheet: View {
 
   let executionMode: CleanupExecutionMode
 
-  @State private var acknowledgedAppsClosed = false
-  @State private var acknowledgedHighImpact = false
-  @State private var acknowledgedManagedVolumeMetadata = false
-  @State private var acknowledgedPermanentDeletion = false
+  @LensState private var acknowledgedAppsClosed = false
+  @LensState private var acknowledgedHighImpact = false
+  @LensState private var acknowledgedManagedVolumeMetadata = false
+  @LensState private var acknowledgedPermanentDeletion = false
 
   private var selected: [CleanupCandidate] { model.selectedCleanupCandidates }
   private var selectedItemCount: Int { selected.reduce(0) { $0 + $1.itemCount } }

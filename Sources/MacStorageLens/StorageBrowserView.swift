@@ -230,7 +230,7 @@ private struct DirectFilesNodeRow: View {
   let index: Int
 
   @Environment(\.colorScheme) private var colorScheme
-  @State private var isHovered = false
+  @LensState private var isHovered = false
 
   var body: some View {
     HStack(spacing: 11) {
@@ -288,7 +288,7 @@ private struct StorageNodeRow: View {
 
   @Environment(\.colorScheme) private var colorScheme
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
-  @State private var isHovered = false
+  @LensState private var isHovered = false
 
   var body: some View {
     HStack(spacing: 11) {

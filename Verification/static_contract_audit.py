@@ -8,9 +8,9 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-VERSION = "1.7.5"
-BUILD = 33
-SCANNER = "2.5.3"
+VERSION = "1.7.6"
+BUILD = 34
+SCANNER = "2.5.4"
 
 checks: list[dict[str, object]] = []
 
@@ -56,8 +56,8 @@ required = [
     "Sources/MacStorageLens/ReportLibrary.swift",
     "Sources/MacStorageLens/ScanFlowSheet.swift",
     "Sources/MacStorageLens/ScanTargetResolver.swift",
-    "Resources/mac-system-storage-tree-v2.5.3.command",
-    "Resources/mac-system-storage-tree-core-v2.5.3.command",
+    "Resources/mac-system-storage-tree-v2.5.4.command",
+    "Resources/mac-system-storage-tree-core-v2.5.4.command",
     "scripts/建立並啟動.command",
     "scripts/驗證原始碼.command",
     "Verification/ExternalVolumeCleanupAudit.swift",
@@ -100,23 +100,23 @@ report_library = texts["Sources/MacStorageLens/ReportLibrary.swift"]
 scan_sheet = texts["Sources/MacStorageLens/ScanFlowSheet.swift"]
 target_resolver = texts["Sources/MacStorageLens/ScanTargetResolver.swift"]
 app_model = texts["Sources/MacStorageLens/AppModel.swift"]
-wrapper = texts["Resources/mac-system-storage-tree-v2.5.3.command"]
-core = texts["Resources/mac-system-storage-tree-core-v2.5.3.command"]
+wrapper = texts["Resources/mac-system-storage-tree-v2.5.4.command"]
+core = texts["Resources/mac-system-storage-tree-core-v2.5.4.command"]
 build = texts["scripts/建立並啟動.command"]
 verify = texts["scripts/驗證原始碼.command"]
 
 # Release identity.
-check("metadata_version", 'fallbackVersion = "1.7.5"' in metadata)
-check("metadata_build", 'fallbackBuild = "33"' in metadata)
-check("metadata_scanner", 'scannerVersion = "2.5.3"' in metadata)
-check("build_version", 'APP_VERSION="1.7.5"' in build)
-check("build_number", 'APP_BUILD="33"' in build)
-check("release_history_has_1_7_5", 'version: "1.7.5"' in metadata)
-check("build_scanner", 'SCANNER_VERSION="2.5.3"' in build)
-check("wrapper_version", 'VERSION="2.5.3"' in wrapper)
-check("core_version", 'VERSION="2.5.3"' in core)
-check("launcher_wrapper_name", "mac-system-storage-tree-v2.5.3.command" in launcher)
-check("launcher_core_name", "mac-system-storage-tree-core-v2.5.3.command" in launcher)
+check("metadata_version", 'fallbackVersion = "1.7.6"' in metadata)
+check("metadata_build", 'fallbackBuild = "34"' in metadata)
+check("metadata_scanner", 'scannerVersion = "2.5.4"' in metadata)
+check("build_version", 'APP_VERSION="1.7.6"' in build)
+check("build_number", 'APP_BUILD="34"' in build)
+check("release_history_has_1_7_6", 'version: "1.7.6"' in metadata)
+check("build_scanner", 'SCANNER_VERSION="2.5.4"' in build)
+check("wrapper_version", 'VERSION="2.5.4"' in wrapper)
+check("core_version", 'VERSION="2.5.4"' in core)
+check("launcher_wrapper_name", "mac-system-storage-tree-v2.5.4.command" in launcher)
+check("launcher_core_name", "mac-system-storage-tree-core-v2.5.4.command" in launcher)
 check(
     "old_scanner_not_referenced_by_launcher",
     "v2.5.1.command" not in launcher and "v2.5.2.command" not in launcher,
@@ -174,7 +174,7 @@ check("overview_stable_tree_title", "可映射穩定資料樹" in overview)
 check("overview_gap_title", "卷宗中繼資料／垃圾桶" in overview)
 check("overview_explains_df_accounting", "完整 df 已用帳務" in overview)
 check("overview_explains_rescan_speed", "避免重複清理後越掃越慢" in overview)
-check("overview_names_scanner_253", "Scanner 2.5.3" in overview)
+check("overview_names_scanner_254", "Scanner 2.5.4" in overview)
 check("accounting_bar_titles_are_dynamic", "visibleTitle" in overview and "gapTitle" in overview)
 
 # Report presentation index and first-map loading contracts.
@@ -329,7 +329,7 @@ check("appmodel_full_rescan_transactional_restore", "self.cleanupIncrementalInde
 check("cleaner_shows_incremental_index_notice", "CleanupIncrementalIndexNotice" in cleaner)
 check("verify_runs_incremental_index_audit", "CleanupIncrementalIndexAudit.swift" in verify)
 
-# Scanner 2.5.3 external-volume timing and status contracts.
+# Scanner 2.5.4 external-volume timing and status contracts.
 check("non_system_app_probe_not_applicable", ".notApplicableToSelectedLocation" in launcher)
 check("probe_has_selected_location_result", "notApplicableToSelectedLocation" in probe)
 check("appmodel_skips_fda_for_non_system", "selectedScanTarget.kind == .system" in app_model and "notApplicableToSelectedLocation" in app_model)
@@ -399,7 +399,7 @@ check(
     "本次耗時拆解" in scan_sheet
     and "Scanner 外等待" in scan_sheet
     and "初始容量圖" in scan_sheet
-    and "Scanner 2.5.3 階段" in scan_sheet,
+    and "Scanner 2.5.4 階段" in scan_sheet,
 )
 check(
     "scan_sheet_locks_during_report_build",
@@ -694,7 +694,7 @@ check("cleanup_scan_no_spotlight_recursive_size", "allocatedSizeRecursively(url)
 
 # Bundle permission declaration and source verifier.
 check("removable_volume_usage_description", "NSRemovableVolumesUsageDescription" in build)
-check("build_copies_scanner_253", "SCANNER_VERSION=\"2.5.3\"" in build and "mac-system-storage-tree-v${SCANNER_VERSION}.command" in build)
+check("build_copies_scanner_254", "SCANNER_VERSION=\"2.5.4\"" in build and "mac-system-storage-tree-v${SCANNER_VERSION}.command" in build)
 check("verify_uses_finder_visible_trash", "FinderVisibleTrash.swift" in verify)
 check("verify_uses_external_executor", "ExternalVolumeCleanupExecutor.swift" in verify)
 check("verify_uses_external_audit", "ExternalVolumeCleanupAudit.swift" in verify)
@@ -703,7 +703,7 @@ check("verify_runs_static_contract", "static_contract_audit.py" in verify)
 check("verify_runs_ui_enum_context", "ui_enum_context_audit.py" in verify)
 check("verify_runs_system_junk_integration", "system_junk_integration_audit.py" in verify)
 check("verify_runs_trash_bins_fixture", "TrashBinsCleanupAudit.swift" in verify)
-check("verify_uses_1_7_5_provenance", "provenance_audit_1_7_5.py" in verify)
+check("verify_uses_1_7_6_provenance", "provenance_audit_1_7_6.py" in verify)
 check("verify_runs_release_build_on_macos", "swift build -c release" in verify)
 
 # No accidental network/telemetry additions in the changed core.
@@ -714,7 +714,7 @@ for token in ["URLSession", "http://", "https://", "telemetry", "analytics endpo
 # Historical safety engines remain present.
 check("appledouble_inspector_preserved", "AppleDouble" in texts["Sources/MacStorageLens/AppleDoubleInspector.swift"])
 check("system_cleanup_engine_preserved", "CleanupEngine" in cleanup)
-check("scanner_wrapper_points_to_core", "mac-system-storage-tree-core-v2.5.3.command" in wrapper)
+check("scanner_wrapper_points_to_core", "mac-system-storage-tree-core-v2.5.4.command" in wrapper)
 
 failed = [item for item in checks if not item["passed"]]
 result = {
