@@ -8,8 +8,8 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-VERSION = "1.8.0"
-BUILD = 35
+VERSION = "2.0.0"
+BUILD = 36
 SCANNER = "2.5.4"
 
 checks: list[dict[str, object]] = []
@@ -29,6 +29,12 @@ def digest(path: str) -> str:
 
 def check(name: str, condition: bool, detail: str = "") -> None:
     checks.append({"name": name, "passed": bool(condition), "detail": detail})
+
+
+def source_section(text: str, start: str, end: str) -> str:
+    """Scope wiring checks to a declaration instead of matching a UI promise."""
+    _, found, remainder = text.partition(start)
+    return remainder.partition(end)[0] if found else ""
 
 
 required = [
@@ -93,6 +99,7 @@ cleanup_index = texts["Sources/MacStorageLens/CleanupIncrementalIndex.swift"]
 system_junk_knowledge = texts["Sources/MacStorageLens/SystemJunkKnowledge.swift"]
 finder_trash = texts["Sources/MacStorageLens/FinderVisibleTrash.swift"]
 executor = texts["Sources/MacStorageLens/ExternalVolumeCleanupExecutor.swift"]
+appledouble = texts["Sources/MacStorageLens/AppleDoubleInspector.swift"]
 launcher = texts["Sources/MacStorageLens/ScannerLauncher.swift"]
 progress_parser = texts["Sources/MacStorageLens/ScanProgressParser.swift"]
 probe = texts["Sources/MacStorageLens/FullDiskAccessProbe.swift"]
@@ -104,13 +111,46 @@ wrapper = texts["Resources/mac-system-storage-tree-v2.5.4.command"]
 core = texts["Resources/mac-system-storage-tree-core-v2.5.4.command"]
 build = texts["scripts/建立並啟動.command"]
 verify = texts["scripts/驗證原始碼.command"]
+report_guided_folder = source_section(
+    folder, "  func scanCandidatesUsingReport(", "\n  func scanCandidateDirectories("
+)
+report_guided_file = source_section(
+    folder, "  private func inspectReportGuidedFile(", "\n  private func classifyAppleDouble("
+)
+appledouble_classifier = source_section(
+    folder, "  private func classifyAppleDouble(", "\n  private func appendMacManagedReviewIfIncluded("
+)
+sensitive_appledouble_rule = source_section(
+    folder,
+    "          .folderSensitiveAppleDoubleSidecar,\n          .folderAppleDoubleReview,",
+    "\n        (\n          .folderUnrecognizedDotUnderscore,",
+)
+targeted_refresh = source_section(
+    folder, "  func scanCandidateDirectories(", "\n  private func inspectReportGuidedDirectory("
+)
+permanent_acknowledgement = source_section(
+    cleaner, "  private var permanentDeletionAcknowledgement: String {",
+    "\n  private var managedVolumeAcknowledgementText: String {",
+)
+permanent_explanation = source_section(
+    cleaner, "  private var permanentDeletionExplanation: String {",
+    "\n  private func rowActionTitle(",
+)
+permanent_confirmation_title = source_section(
+    cleaner, "  private var confirmationTitle: String {",
+    "\n  private var confirmationButtonTitle: String {",
+)
+confirmation_can_execute = source_section(
+    cleaner, "  private var canExecute: Bool {", "\n  private var tint: Color {"
+)
 
 # Release identity.
-check("metadata_version", 'fallbackVersion = "1.8.0"' in metadata)
-check("metadata_build", 'fallbackBuild = "35"' in metadata)
+check("metadata_version", 'fallbackVersion = "2.0.0"' in metadata)
+check("metadata_build", 'fallbackBuild = "36"' in metadata)
 check("metadata_scanner", 'scannerVersion = "2.5.4"' in metadata)
-check("build_version", 'APP_VERSION="1.8.0"' in build)
-check("build_number", 'APP_BUILD="35"' in build)
+check("build_version", 'APP_VERSION="2.0.0"' in build)
+check("build_number", 'APP_BUILD="36"' in build)
+check("release_history_has_2_0_0", 'version: "2.0.0"' in metadata)
 check("release_history_has_1_8_0", 'version: "1.8.0"' in metadata)
 check("build_scanner", 'SCANNER_VERSION="2.5.4"' in build)
 check("wrapper_version", 'VERSION="2.5.4"' in wrapper)
@@ -170,11 +210,31 @@ check("parser_reads_excluded_flag", 'case "volume_volatile_metadata_excluded"' i
 check("parser_reads_excluded_names", 'case "volume_volatile_metadata_names"' in parser)
 check("capacity_uses_volume_gap_label", "volumeGapLabel" in capacity)
 check("capacity_gap_label_mentions_trash", "卷宗中繼資料／垃圾桶（未展開）" in capacity)
-check("overview_stable_tree_title", "可映射穩定資料樹" in overview)
-check("overview_gap_title", "卷宗中繼資料／垃圾桶" in overview)
-check("overview_explains_df_accounting", "完整 df 已用帳務" in overview)
-check("overview_explains_rescan_speed", "避免重複清理後越掃越慢" in overview)
-check("overview_names_scanner_254", "Scanner 2.5.4" in overview)
+check(
+    "overview_labels_scanned_path_capacity",
+    "已列出路徑的容量" in overview and "title: visibleTreeTitle" in overview,
+)
+check(
+    "overview_distinguishes_unexpanded_and_unresolved_usage",
+    "未展開的系統資料與容量差額" in overview and "未解析容量差額" in overview
+    and "title: gapTitle" in overview,
+)
+check(
+    "overview_explains_filesystem_accounting",
+    "檔案系統回報的已用容量" in overview and "未解析差額的合計" in overview
+    and "summary.dataUsedBytes : summary.targetVolumeUsedBytes" in overview
+    and "visible: treeBytes" in overview and "gap: gapBytes" in overview,
+)
+check(
+    "overview_discloses_omitted_volume_contents",
+    "summary.targetKind == .volume && summary.volumeVolatileMetadataExcluded" in overview
+    and "summary.volumeVolatileMetadataNames.joined" in overview
+    and "它們仍計入已用容量" in overview,
+)
+check(
+    "overview_shows_report_provenance",
+    "document.summary.generatedAt" in overview and "document.summary.scannerVersion" in overview,
+)
 check("accounting_bar_titles_are_dynamic", "visibleTitle" in overview and "gapTitle" in overview)
 
 # Report presentation index and first-map loading contracts.
@@ -198,7 +258,11 @@ check("parser_builds_initial_presentation_in_single_pass", "initialPresentationR
 check("parser_reuses_embedded_presentation", "initial.rootPath == parentPath" in parser and "return (initial.children, initial.sunburst)" in parser)
 check("app_loads_persistent_index_first", "reportPresentationIndexStore.load(for: url)" in app_model)
 check("app_saves_index_after_markdown_parse", "reportPresentationIndexStore.save(document: document, for: url)" in app_model)
-check("app_reports_index_source", "presentationIndexSource" in app_model and "compactTitle" in app_model)
+check(
+    "app_records_index_source_in_scan_timing",
+    "presentationIndexSource: bundle.presentationIndexSource" in app_model
+    and "presentationIndexWriteSeconds: bundle.presentationIndexWriteSeconds" in app_model,
+)
 check("scan_sheet_shows_index_timing", "建立容量索引" in scan_sheet and "索引寫入" in scan_sheet)
 check("verify_runs_presentation_index_audit", "ReportPresentationIndexAudit.swift" in verify)
 check("aggregation_threshold_is_thousands", "automaticAggregationThreshold = 2_048" in models)
@@ -207,7 +271,11 @@ check("aggregate_is_interactive", "isExpandableAggregate" in models and "isInter
 check("parser_aggregates_only_after_threshold", "SunburstPresentationPolicy.visibleChildCount" in parser)
 check("aggregate_preserves_parent_path", "path: node.path" in parser and "kind: .otherChildren" in parser)
 check("app_expands_aggregate_from_report", "expandAggregatedChildren" in app_model and "parser.loadChildren" in app_model)
-check("overview_discloses_expandable_aggregate", "超過 2,048" in overview and "點擊可展開完整清單" in overview)
+check(
+    "overview_discloses_expandable_aggregate",
+    "case .otherChildren:" in overview and "這些子資料夾合併顯示" in overview
+    and "點一下展開" in overview,
+)
 check("verify_runs_sunburst_aggregation_audit", "SunburstAggregationAudit.swift" in verify)
 
 # 1.7.1 report-guided cleanup: the Markdown is a navigation index, never deletion authority.
@@ -222,16 +290,34 @@ check("report_guided_checks_logical_target", "reportRetentionKey == target.repor
 check("report_guided_maps_remounted_root", "func liveURL(for reportPath: String)" in folder)
 check("report_guided_low_risk_exact_probe", "windowsMetadataExactProbeNames" in folder and "fileExists(atPath: url.path)" in folder)
 check("report_guided_live_candidate_metadata", "entry.resourceValues(forKeys: candidateKeys)" in folder)
-check("report_guided_appledouble_live_inspection", "classifyAppleDouble(" in folder and "AppleDouble 判定沒有直接相信容量報告" in folder)
-check("report_guided_discloses_snapshot_boundary", "新增但不在報告中的整個新資料夾" in folder)
+check(
+    "report_guided_appledouble_live_inspection",
+    "inspectReportGuidedFile(" in report_guided_folder
+    and "entry.resourceValues(forKeys: candidateKeys)" in report_guided_folder
+    and "classifyAppleDouble(" in report_guided_file
+    and "appleDoubleInspector.inspect(url)" in appledouble_classifier,
+)
+check(
+    "report_guided_discloses_snapshot_boundary",
+    "容量報告建立後新增的整個資料夾" in report_guided_folder
+    and "完整重新掃描" in report_guided_folder,
+)
 check("cleanup_engine_keeps_two_sources", "case .existingStorageReport" in cleanup and "case .liveFilesystem" in cleanup)
 check("appmodel_defaults_quick_cleanup_source", "cleanupScanSource: CleanupScanSource = .existingStorageReport" in app_model)
 check("appmodel_resolves_reusable_report", "cleanupReusableReportURL(for target: ScanTarget)" in app_model)
 check("appmodel_reuses_presentation_index", "reportPresentationIndexStore.load(for: reportURL)" in app_model)
 check("appmodel_falls_back_to_markdown_parse", "parser.parse(url: reportURL)" in app_model)
 check("cleaner_has_scan_source_selector", "CleanupScanSourceSelector" in cleaner)
-check("cleaner_discloses_report_not_authority", "不會把 Markdown 當成刪除授權" in cleaner)
-check("cleaner_discloses_full_rescan", "完整模式維持原本行為" in cleaner)
+check(
+    "cleaner_discloses_current_file_revalidation",
+    "候選仍會依目前檔案狀態驗證" in cleaner
+    and "entry.resourceValues(forKeys: candidateKeys)" in report_guided_folder,
+)
+check(
+    "cleaner_discloses_full_rescan_scope",
+    "完整模式重新讀取整個目標" in cleaner
+    and "model.selectCleanupScanSource(.liveFilesystem)" in cleaner,
+)
 check("verify_runs_report_guided_cleanup_audit", "ReportGuidedCleanupAudit.swift" in verify)
 
 # 1.7.4 external-media AppleDouble policy and server recycle exclusion remains intact.
@@ -262,7 +348,14 @@ check(
 )
 check(
     "folder_external_appledouble_resourcefork_redline",
-    "resource fork、未知 entry、package／symlink companion" in folder,
+    "resourceForkBytes > 0 || !unknownEntryIDs.isEmpty" in appledouble
+    and "case .package:" in appledouble and "case .symbolicLink:" in appledouble
+    and "case .orphanedSensitive, .pairedSensitive:" in appledouble_classifier
+    and "rule: .folderSensitiveAppleDoubleSidecar" in appledouble_classifier
+    and re.match(
+        r"\s*\.ultraAggressive,\s*\.folderAppleDoubleReview,\s*\.reviewOnly,",
+        sensitive_appledouble_rule,
+    ) is not None,
 )
 check(
     "app_cache_uses_actual_directory_entries",
@@ -311,7 +404,17 @@ check("cleanup_index_removes_success_paths_only", "successfulPaths.formUnion(ent
 check("cleanup_index_marks_success_parents_dirty", "dirtyDirectoryPaths.insert(parent)" in cleanup_index)
 check("cleanup_index_keeps_path_bytes", "matchedPathBytes" in cleanup_index and "bytesByPath" in folder)
 check("folder_has_targeted_refresh", "func scanCandidateDirectories(" in folder)
-check("targeted_refresh_does_not_recurse", "本次只刷新" in folder and "沒有重新遞迴整個目標" in folder)
+check(
+    "targeted_refresh_does_not_recurse",
+    "validDirectories.enumerated()" in targeted_refresh
+    and "NativeFileSystem.contentsOfDirectory(at: directory)" in targeted_refresh
+    and "url.path == rootPath || isStrictDescendant(url, of: root)" in targeted_refresh
+    and "directoryValues.isSymbolicLink != true" in targeted_refresh
+    and all(token not in targeted_refresh for token in [
+        "NativeFileSystem.enumerator(", "fileManager.enumerator(", "scanCandidates(",
+        "scanCandidatesUsingReport(",
+    ]),
+)
 check("appmodel_profile_preserves_index_and_offers_choice", "可用補充掃描只處理未覆蓋規則，也可完整重新掃描目前等級" in app_model)
 check("appmodel_scans_only_missing_scopes", "let missing = index.missingScopes" in app_model and "CleanupScanConfiguration.indexScan(scopes: scopesToScan)" in app_model)
 check("appmodel_eager_classifies_appledouble_family", "classify the full AppleDouble family in the same pass" in app_model)
@@ -333,7 +436,13 @@ check("verify_runs_incremental_index_audit", "CleanupIncrementalIndexAudit.swift
 check("non_system_app_probe_not_applicable", ".notApplicableToSelectedLocation" in launcher)
 check("probe_has_selected_location_result", "notApplicableToSelectedLocation" in probe)
 check("appmodel_skips_fda_for_non_system", "selectedScanTarget.kind == .system" in app_model and "notApplicableToSelectedLocation" in app_model)
-check("scan_sheet_explains_selected_location", "不需要探測 Mac 的受保護使用者資料" in scan_sheet)
+check(
+    "scan_sheet_explains_selected_location",
+    "Text(model.selectedScanTarget.displayName)" in scan_sheet
+    and "Text(model.selectedScanTarget.path)" in scan_sheet
+    and "NextScanTargetMenuContent(includesDisplayedLocationShortcut: false)" in scan_sheet
+    and "if model.selectedScanTarget.kind == .system" in scan_sheet,
+)
 check("scanner_clock_starts_before_target_validation", core.find("PROCESS_START_EPOCH=") < core.find("case \"$TARGET_KIND\"") )
 check("scanner_tcc_probe_system_only", 'if [[ "$TARGET_KIND" == "system" ]]; then' in core and 'SCANNER_FDA_STATUS="NOT_APPLICABLE"' in core)
 check("scanner_detects_filesystem_type", "TARGET_FILESYSTEM_TYPE" in core and "TARGET_IS_APFS" in core)
@@ -413,7 +522,12 @@ check("parser_reads_volatile_status", all(token in parser for token in [
     'case "target_spotlight_root_status"', 'case "target_fsevents_root_status"',
     'case "target_trash_root_status"',
 ]))
-check("overview_shows_volatile_status", "Spotlight：" in overview and "FSEvents：" in overview and "卷宗垃圾桶：" in overview)
+check(
+    "overview_shows_volatile_status",
+    all("volatileStatusTitle(summary." + field + ")" in overview for field in [
+        "targetSpotlightRootStatus", "targetFSEventsRootStatus", "targetTrashRootStatus",
+    ]),
+)
 check("successful_sessions_preserved", "guard case .failure(let error) = result else { return true }" in launcher)
 check("successful_session_summary_written", "session-summary.json" in launcher and "elapsed_seconds" in launcher)
 check(
@@ -497,7 +611,7 @@ check(
 )
 check(
     "full_scan_blocks_cleanup_work",
-    'guard !isScanningCleanup, !isCleaning, !isLoadingReport else' in app_model
+    'guard !isWorkbenchBusy, !isScanningCleanup, !isCleaning, !isLoadingReport else' in app_model
     and "避免同時讀取同一個磁碟" in app_model,
 )
 check(
@@ -508,7 +622,7 @@ check(
 check(
     "cleanup_execution_blocks_other_disk_work",
     'func executeSelectedCleanup' in app_model
-    and 'guard !isFullScanRunning, !isLoadingReport, !isScanningCleanup, !isCleaning else' in app_model
+    and 'guard !isWorkbenchBusy, !isFullScanRunning, !isLoadingReport, !isScanningCleanup, !isCleaning' in app_model
     and "目前不會同時啟動清理" in app_model,
 )
 check(
@@ -640,8 +754,7 @@ check(
     and "UltraAggressiveOptionsStrip" in cleaner
     and "model.setPresetOptionalCleanupScope" in cleaner
     and "model.cleanupProfile == .ultraAggressive" in cleaner
-    and "model.cleanupProfile == .custom" in cleaner
-    and "CleanupResearchReferenceNote" in cleaner,
+    and "model.cleanupProfile == .custom" in cleaner,
 )
 check(
     "l5_optional_scopes_default_off_and_persisted",
@@ -666,8 +779,10 @@ check(
 )
 check(
     "trash_bins_confirmation_copy",
-    "我了解『廢紙簍（永久清空）』" in cleaner
-    and "其他 UID 與 NAS #recycle" in cleaner,
+    "if includesTrashBins" in permanent_explanation
+    and "本次掃描列出的目前使用者內容" in permanent_explanation
+    and "掃描後新增的項目不在此次範圍" in permanent_explanation
+    and "無法從 Finder 垃圾桶還原" in permanent_acknowledgement,
 )
 check("legacy_residue_direct_only", "requiresDirectDeletion" in models and "folderLegacySpotlightTrashResidue" in models)
 check("cleaner_has_finder_visible_button", "移到 Finder 可見垃圾桶" in cleaner)
@@ -677,8 +792,19 @@ check("report_index_try_warning_consumed", "_ = try? self.reportPresentationInde
 check("cleaner_has_direct_delete_button", "直接徹底刪除…" in cleaner)
 check("cleaner_disables_trash_for_direct_only", r"selected.contains(where: \.requiresDirectDeletion)" in cleaner)
 check("cleaner_requires_permanent_confirmation", "acknowledgedPermanentDeletion" in cleaner)
-check("cleaner_discloses_no_trash", "不經任何垃圾桶" in cleaner)
-check("cleaner_discloses_no_hidden_marker", "不建立 no_log 或其他隱藏" in cleaner)
+check(
+    "cleaner_direct_delete_action_is_explicit",
+    "executionMode == .forceDelete" in permanent_confirmation_title
+    and "直接徹底刪除前確認" in permanent_confirmation_title
+    and "model.executeSelectedCleanup(removalMode: executionMode)" in cleaner,
+)
+check(
+    "cleaner_permanent_delete_discloses_irreversibility",
+    "所選項目會直接刪除" in permanent_acknowledgement
+    and "無法從 Finder 垃圾桶還原" in permanent_acknowledgement
+    and re.search(r"Toggle\(\s*permanentDeletionAcknowledgement,\s*isOn:\s*\$acknowledgedPermanentDeletion", cleaner) is not None
+    and "executionMode != .forceDelete || acknowledgedPermanentDeletion" in confirmation_can_execute,
+)
 check("appmodel_reveals_verified_receipts", "FinderVisibleTrash.reveal" in app_model)
 check("appmodel_never_opens_hidden_volume_trash", "cleanupVolumeTrashURL" not in app_model and 'appendingPathComponent(".Trashes"' not in app_model)
 check("folder_surfaces_legacy_hidden_trash_residue", "appendLegacyHiddenTrashResiduesIfIncluded" in folder)
@@ -703,7 +829,7 @@ check("verify_runs_static_contract", "static_contract_audit.py" in verify)
 check("verify_runs_ui_enum_context", "ui_enum_context_audit.py" in verify)
 check("verify_runs_system_junk_integration", "system_junk_integration_audit.py" in verify)
 check("verify_runs_trash_bins_fixture", "TrashBinsCleanupAudit.swift" in verify)
-check("verify_uses_1_8_0_provenance", "provenance_audit_1_8_0.py" in verify)
+check("verify_uses_2_0_0_provenance", "provenance_audit_2_0_0.py" in verify)
 check("verify_runs_release_build_on_macos", "swift build -c release" in verify)
 
 # No accidental network/telemetry additions in the changed core.

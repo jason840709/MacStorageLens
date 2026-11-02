@@ -161,7 +161,7 @@ struct PermissionChainAudit {
     try overlayCheck(overlay.tccOverlayReplacedBytes == 100_000 * 1024, "overlay_replaced_bytes")
     try overlayCheck(overlay.tccOverlayDeltaBytes == 23_000 * 1024, "overlay_delta_bytes")
     try overlayCheck(
-      overlay.scanChannelDisplayName == "App TCC + 管理員", "channel_display_name")
+      overlay.scanChannelDisplayName == "App 與管理員授權", "channel_display_name")
     try overlayCheck(!overlay.hasAmbiguousLegacyAdministratorProbe, "not_legacy_ambiguous")
 
     try legacyCheck(legacy.scannerVersion == "2.5.0", "scanner_2_5_0")

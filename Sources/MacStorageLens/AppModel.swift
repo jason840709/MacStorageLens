@@ -36,6 +36,12 @@ final class AppModel: ObservableObject {
   @Published var sunburst: SunburstItem?
   @Published var overviewSunburst: SunburstItem?
   @Published var liveCapacity: LiveCapacity?
+  private var liveCapacityTargetPath: String?
+
+  var displayedLiveCapacity: LiveCapacity? {
+    let targetPath = document?.summary.targetPath ?? selectedScanTarget.path
+    return liveCapacityTargetPath == targetPath ? liveCapacity : nil
+  }
   @Published var cleanupCandidates: [CleanupCandidate] = []
   @Published var cleanupProfile: CleanupProfile = .ultraConservative
   @Published var cleanupCustomScopes: Set<CleanupScope> = [
@@ -71,10 +77,13 @@ final class AppModel: ObservableObject {
   @Published var lastScanTiming: ScanTimingSnapshot?
   @Published var isFullScanRunning = false
 
+  var isTerminalScanRunning: Bool { isFullScanRunning && terminalScanRequestedAt != nil }
+
   @Published var isLoadingReport = false
   @Published var isLoadingTree = false
   @Published var isScanningCleanup = false
   @Published var isCleaning = false
+  @Published var isWorkbenchBusy = false
   @Published var lastFinderVisibleTrashReceipts: [FinderVisibleTrashReceipt] = []
   @Published var statusMessage = "尚未載入掃描報告"
   @Published var reportStatusKind: ReportStatusKind = .empty
@@ -240,14 +249,14 @@ final class AppModel: ObservableObject {
       return "目前位置還沒有完整容量報告；請先完成儲存空間總覽掃描，或使用完整重新掃描。"
     }
     if let document, document.url.standardizedFileURL == url.standardizedFileURL {
-      return "使用目前已載入的容量報告（\(document.summary.generatedAt)）；不再重新遞迴發現整棵資料樹。"
+      return "使用目前已載入的容量報告（\(document.summary.generatedAt)）；不重新掃描所有資料夾；候選仍會重新檢查是否符合清理條件。"
     }
     if let record = reportHistory.first(where: {
       $0.url.standardizedFileURL == url.standardizedFileURL
     }) {
-      return "使用已保存的容量報告（\(record.generatedAt)）；候選命中仍會即時向檔案系統驗證。"
+      return "使用已保存的容量報告（\(record.generatedAt)）；候選仍會重新檢查是否符合清理條件。"
     }
-    return "使用已保存的容量報告作為資料夾索引；候選命中仍會即時驗證。"
+    return "使用已保存的容量報告作為資料夾索引；候選仍會重新檢查是否符合清理條件。"
   }
 
   var cleanupFinderVisibleTrashAvailable: Bool {
@@ -262,7 +271,7 @@ final class AppModel: ObservableObject {
 
   var cleanupFinderTrashHelp: String {
     if cleanupMode == .system {
-      return "只使用 Finder 的系統垃圾桶語意。"
+      return "項目會移到 Finder 的垃圾桶；清空前仍占用原磁碟空間，可在 Finder 還原。"
     }
     if let reason = cleanupTargetCapabilities?.finderTrashUnavailableReason {
       return reason
@@ -270,7 +279,7 @@ final class AppModel: ObservableObject {
     if cleanupTargetCapabilities == nil {
       return "正在辨識目前掛載的檔案系統；確認可使用 Finder 垃圾桶前，此選項會維持停用。"
     }
-    return "只使用 Finder 的系統垃圾桶語意。"
+    return "項目會移到 Finder 的垃圾桶；清空前仍占用原磁碟空間，可在 Finder 還原。"
   }
 
   var cleanupTargetRemovalNotice: String? {
@@ -396,7 +405,7 @@ final class AppModel: ObservableObject {
         preservingTargets: preservedTargets
       )
     } catch {
-      errorMessage = "無法依掃描位置收斂報告快取：\(error.localizedDescription)"
+      errorMessage = "無法移除同一位置的舊報告：\(error.localizedDescription)"
     }
     reportHistory = library.reportRecords()
     knownReportPaths = Set(reportHistory.map { $0.url.standardizedFileURL.path })
@@ -477,7 +486,7 @@ final class AppModel: ObservableObject {
               if scanSession != nil || workflowRequestedAt != nil {
                 self.scanProgress = ScanProgressSnapshot(
                   message: "\(progress.stage)…",
-                  detail: "單次遍歷會同時建立區段索引與第一個四層容量地圖，不再重讀大型 Markdown。",
+                  detail: "報告載入後會顯示容量地圖。",
                   fraction: 0.98 + progress.fraction * 0.013,
                   stage: "建立報告索引",
                   elapsedSeconds: Int(Date().timeIntervalSince(parseStartedAt).rounded()),
@@ -515,11 +524,11 @@ final class AppModel: ObservableObject {
         // the scan sheet can truthfully say the result is ready.
         DispatchQueue.main.async {
           guard self.reportLoadGeneration == generation else { return }
-          self.statusMessage = "正在套用容量地形地圖：\(url.lastPathComponent)"
+          self.statusMessage = "正在載入容量地圖：\(url.lastPathComponent)"
           if scanSession != nil || workflowRequestedAt != nil {
             self.scanProgress = ScanProgressSnapshot(
-              message: "報告索引已完成，正在核對容量帳務並套用地圖…",
-              detail: "這一步只組裝總覽與資料樹，不會再次遍歷完整 Markdown。",
+              message: "正在建立容量地圖…",
+              detail: "即將顯示總覽與資料樹。",
               fraction: 0.994,
               stage: "套用容量地圖",
               elapsedSeconds: Int(Date().timeIntervalSince(parseStartedAt).rounded()),
@@ -572,8 +581,7 @@ final class AppModel: ObservableObject {
           self.children = bundle.children
           self.sunburst = bundle.sunburst
           self.overviewSunburst = bundle.overviewSunburst
-          self.statusMessage =
-            "已載入 \(url.lastPathComponent) · \(bundle.presentationIndexSource.compactTitle)"
+          self.statusMessage = "已載入 \(url.lastPathComponent)"
           self.reportStatusKind = .ready
           if bundle.document.summary.target.reportRetentionKey
             == self.selectedScanTarget.reportRetentionKey
@@ -602,7 +610,8 @@ final class AppModel: ObservableObject {
             self.scanSheetPhase = .completed(url)
             self.scanProgress = ScanProgressSnapshot(
               message: "掃描、報告解析與容量地圖已完成。",
-              detail: "端到端耗時 \(self.formattedTimingDuration(timing.requestToReadySeconds))。",
+              detail:
+                "從開始掃描到容量地圖可用共耗時 \(self.formattedTimingDuration(timing.requestToReadySeconds))。",
               fraction: 1,
               stage: "完成",
               elapsedSeconds: Int(timing.requestToReadySeconds.rounded()),
@@ -644,7 +653,8 @@ final class AppModel: ObservableObject {
             self.scanSheetPhase = .completed(url)
             self.scanProgress = ScanProgressSnapshot(
               message: "掃描、報告解析與容量地圖已完成。",
-              detail: "端到端耗時 \(self.formattedTimingDuration(timing.requestToReadySeconds))。",
+              detail:
+                "從開始掃描到容量地圖可用共耗時 \(self.formattedTimingDuration(timing.requestToReadySeconds))。",
               fraction: 1,
               stage: "完成",
               elapsedSeconds: Int(timing.requestToReadySeconds.rounded()),
@@ -741,7 +751,7 @@ final class AppModel: ObservableObject {
   }
 
   func runFullScan() {
-    guard !isScanningCleanup, !isCleaning, !isLoadingReport else {
+    guard !isWorkbenchBusy, !isScanningCleanup, !isCleaning, !isLoadingReport else {
       statusMessage = "另一個磁碟工作或報告解析仍在進行；完成後再啟動容量掃描，避免同時讀取同一個磁碟。"
       return
     }
@@ -761,7 +771,8 @@ final class AppModel: ObservableObject {
   }
 
   func startIntegratedScan(mode: ScanPrivilegeMode) {
-    guard !isFullScanRunning, !isLoadingReport, !isScanningCleanup, !isCleaning else {
+    guard !isWorkbenchBusy, !isFullScanRunning, !isLoadingReport, !isScanningCleanup, !isCleaning
+    else {
       statusMessage = "另一個磁碟工作仍在執行；目前不會同時啟動容量掃描。"
       return
     }
@@ -770,12 +781,12 @@ final class AppModel: ObservableObject {
     scanSheetPhase = .running
     scanProgress = ScanProgressSnapshot(
       message: mode == .administrator
-        ? "正在以 App 權限準備受保護資料覆蓋…"
-        : "正在以 MacStorageLens App 權限啟動唯讀掃描…",
+        ? "正在讀取 App 已獲授權的受保護資料…"
+        : "正在使用 App 權限啟動掃描…",
       detail: mode == .administrator
-        ? "完成 App-owned TCC 掃描後，才會顯示 macOS 管理員授權對話框。"
-        : "此通道由 App 直接啟動，會使用 MacStorageLens 自己的完整磁碟存取權。",
-      stage: mode == .administrator ? "App 權限預掃描" : "啟動掃描器",
+        ? "完成後，macOS 會要求管理員授權以掃描系統其他位置。"
+        : "掃描使用你授予 App 的磁碟存取權限。",
+      stage: mode == .administrator ? "讀取受保護資料" : "啟動掃描",
       health: .active
     )
     statusMessage = "完整掃描正在背景執行；完成後會自動載入。"
@@ -801,7 +812,7 @@ final class AppModel: ObservableObject {
             self.refreshReportHistory()
             self.scanProgress = ScanProgressSnapshot(
               message: "掃描器已完成，正在解析報告並建立容量地圖…",
-              detail: "完成畫面後會列出 Scanner 與 App 各階段耗時。",
+              detail: "完成後會顯示總耗時；詳細耗時可展開查看。",
               fraction: 0.99,
               stage: "解析與建立畫面",
               health: .active,
@@ -851,11 +862,11 @@ final class AppModel: ObservableObject {
   func cancelFullScan() {
     guard isFullScanRunning else { return }
     guard let activeScanSession else {
-      errorMessage = "目前是 Terminal 相容模式。請在 Terminal 視窗按 Control-C 取消掃描。"
+      errorMessage = "目前是 Terminal 掃描。請在 Terminal 視窗按 Control-C 取消掃描。"
       return
     }
     scanProgress = ScanProgressSnapshot(
-      message: "正在安全取消掃描…",
+      message: "正在停止掃描…",
       detail: "等待目前的唯讀系統呼叫結束；本次未完成報告不會保留。",
       currentPath: scanProgress.currentPath,
       fraction: scanProgress.fraction,
@@ -871,7 +882,7 @@ final class AppModel: ObservableObject {
       recentMessages: Array((scanProgress.recentMessages + ["已提出取消要求。"]).suffix(7)),
       isEstimated: true
     )
-    statusMessage = "正在安全取消完整掃描…"
+    statusMessage = "正在停止本次掃描…"
     reportStatusKind = .scanning
     activeScanSession.cancel()
   }
@@ -885,7 +896,8 @@ final class AppModel: ObservableObject {
   }
 
   func runFullScanInTerminal() {
-    guard !isFullScanRunning, !isLoadingReport, !isScanningCleanup, !isCleaning else {
+    guard !isWorkbenchBusy, !isFullScanRunning, !isLoadingReport, !isScanningCleanup, !isCleaning
+    else {
       statusMessage = "另一個磁碟工作仍在執行；目前不會同時啟動 Terminal 容量掃描。"
       return
     }
@@ -899,20 +911,20 @@ final class AppModel: ObservableObject {
       adoptResolvedScanTarget(resolvedTarget)
       scanSheetPhase = .running
       scanProgress = ScanProgressSnapshot(
-        message: "Terminal 相容模式已啟動；完成後 App 仍會自動偵測報告。",
+        message: "已在 Terminal 啟動掃描；App 正在等待完成報告。",
         detail: "此模式使用 Terminal 自己的完整磁碟存取權；MacStorageLens 的授權不會自動套用到 Terminal。",
-        stage: "Terminal 相容模式"
+        stage: "Terminal 掃描"
       )
       isShowingScanSheet = true
       isFullScanRunning = true
       startTerminalReportWatcher()
-      statusMessage = "Terminal 相容模式掃描中；完成後會自動載入。"
+      statusMessage = "Terminal 掃描中；完成後會自動載入。"
       reportStatusKind = .scanning
     } catch {
       terminalScanRequestedAt = nil
       isFullScanRunning = false
       scanSheetPhase = .failed(error.localizedDescription)
-      statusMessage = "Terminal 相容模式無法啟動：\(error.localizedDescription)"
+      statusMessage = "Terminal 掃描無法啟動：\(error.localizedDescription)"
       reportStatusKind = .failed
     }
   }
@@ -1149,7 +1161,7 @@ final class AppModel: ObservableObject {
         self.scanSheetPhase = .running
         self.scanProgress = ScanProgressSnapshot(
           message: "Terminal 掃描器已完成，正在解析報告並建立容量地圖…",
-          detail: "完成畫面後會列出 Scanner 與 App 各階段耗時。",
+          detail: "完成後會顯示總耗時；詳細耗時可展開查看。",
           fraction: 0.99,
           stage: "解析與建立畫面",
           health: .active,
@@ -1171,8 +1183,9 @@ final class AppModel: ObservableObject {
         self.terminalScanDeadline = nil
         self.terminalScanRequestedAt = nil
         self.isFullScanRunning = false
-        self.scanSheetPhase = .failed("Terminal 相容模式在 30 分鐘內沒有產生完成報告。")
-        self.statusMessage = "Terminal 相容模式未在期限內完成。"
+        self.scanSheetPhase = .failed(
+          "App 等待 30 分鐘仍未找到完成報告，已停止自動等待。Terminal 中的掃描可能仍在執行；請先查看該視窗，再決定是否按 Control-C 停止或重新掃描。")
+        self.statusMessage = "已停止等待 Terminal 報告；請查看 Terminal 中的掃描是否仍在執行。"
         self.reportStatusKind = .failed
       }
     }
@@ -1216,7 +1229,7 @@ final class AppModel: ObservableObject {
         preservingTargets: [selectedScanTarget, document?.summary.target].compactMap { $0 }
       )
     } catch {
-      errorMessage = "無法依掃描位置收斂新完成報告：\(error.localizedDescription)"
+      errorMessage = "無法移除同一位置的舊報告：\(error.localizedDescription)"
     }
     let records = library.reportRecords()
     let newRecords = records.filter { !knownReportPaths.contains($0.url.standardizedFileURL.path) }
@@ -1244,7 +1257,12 @@ final class AppModel: ObservableObject {
       guard let self else { return }
       let result = Result { try self.capacityMonitor.read(volumeContainingPath: capacityPath) }
       DispatchQueue.main.async {
+        guard (self.document?.summary.targetPath ?? self.selectedScanTarget.path) == capacityPath
+        else {
+          return
+        }
         if case .success(let capacity) = result {
+          self.liveCapacityTargetPath = capacityPath
           self.liveCapacity = capacity
         }
       }
@@ -1376,7 +1394,7 @@ final class AppModel: ObservableObject {
       )
       return
     }
-    guard !isScanningCleanup, !isCleaning else { return }
+    guard !isWorkbenchBusy, !isScanningCleanup, !isCleaning else { return }
     let configuration = cleanupConfiguration
     guard let target = ScanTargetResolver.resolveMountedTarget(selectedScanTarget) else {
       cleanupScanProgress = CleanupScanProgress(
@@ -1595,7 +1613,8 @@ final class AppModel: ObservableObject {
   }
 
   func executeSelectedCleanup(removalMode: CleanupExecutionMode = .moveToTrash) {
-    guard !isFullScanRunning, !isLoadingReport, !isScanningCleanup, !isCleaning else {
+    guard !isWorkbenchBusy, !isFullScanRunning, !isLoadingReport, !isScanningCleanup, !isCleaning
+    else {
       statusMessage = "另一個磁碟工作仍在執行；目前不會同時啟動清理。"
       return
     }
@@ -1617,7 +1636,7 @@ final class AppModel: ObservableObject {
       let directOnly = selected.filter { !$0.supportsFinderVisibleTrash }
       guard directOnly.isEmpty else {
         errorMessage =
-          "下列項目不能假裝進入垃圾桶，請改用『直接徹底刪除』："
+          "下列項目無法移到 Finder 垃圾桶。如要移除，需改用『直接徹底刪除』，刪除後無法從 Finder 還原："
           + directOnly.map(\.displayName).joined(separator: "、")
         return
       }
@@ -1671,22 +1690,22 @@ final class AppModel: ObservableObject {
           } else if removalMode == .forceDelete {
             if targetCapabilities.isRemote {
               self.statusMessage =
-                "已向 \(targetCapabilities.filesystemDisplayName) 遠端掛載直接刪除 \(completedCount) 項；不經 Finder 垃圾桶。NAS／伺服器若啟用自己的 recycle bin、snapshot 或版本保護，實際保留與空間釋放由伺服器端政策決定。"
+                "已從 \(targetCapabilities.filesystemDisplayName) 遠端磁碟直接刪除 \(completedCount) 項；不經 Finder 垃圾桶。NAS／伺服器若啟用自己的垃圾桶、快照或版本保護，實際保留與空間釋放由伺服器端政策決定。"
             } else {
               self.statusMessage =
-                "已直接徹底刪除 \(completedCount) 項；沒有經過任何垃圾桶，也沒有建立隱藏暫存或標記。"
+                "已直接徹底刪除 \(completedCount) 項；沒有經過垃圾桶。"
             }
           }
 
           if recreatedCount > 0 {
             self.statusMessage +=
-              " macOS 已以不同 inode 重新建立 \(recreatedCount) 個同名目錄；這些是新資料，請重新掃描確認容量。"
+              " 系統已重新建立 \(recreatedCount) 個同名目錄；這些是清理後產生的新資料，請重新掃描確認目前容量。"
           }
           self.statusMessage += " 操作紀錄：\(value.1.lastPathComponent)"
 
           if failureCount > 0 {
             self.errorMessage =
-              "\(removalMode.title)完成 \(completedCount) 項，但有 \(failureCount) 筆未完成；已成功的項目不會被冒充為失敗，詳細紀錄：\(value.1.path)"
+              "\(removalMode.title)完成 \(completedCount) 項，但有 \(failureCount) 筆未完成；詳細紀錄：\(value.1.path)"
           }
 
           // Keep the expensive discovery work. Successful paths are removed from
@@ -1723,6 +1742,19 @@ final class AppModel: ObservableObject {
         }
       }
     }
+  }
+
+  func cleanupWorkbenchDidFinish() {
+    if let index = cleanupIncrementalIndex {
+      cleanupIncrementalIndexStore.remove(
+        target: index.target, scanSource: index.scanSource,
+        sourceReportURL: index.sourceReportPath.map { URL(fileURLWithPath: $0) })
+    }
+    cleanupIncrementalIndex = nil
+    cleanupCandidates = []
+    cleanupLastResult = nil
+    updateCleanupIndexStatus()
+    refreshCapacity()
   }
 
   func openInFinder(_ path: String) {
@@ -1777,7 +1809,7 @@ final class AppModel: ObservableObject {
     let fileManager = FileManager.default
     if let trashURL = fileManager.urls(for: .trashDirectory, in: .userDomainMask).first {
       NSWorkspace.shared.open(trashURL)
-      statusMessage = "已開啟 Finder 垃圾桶；MacStorageLens 不會開啟或建立不可見的卷宗垃圾桶。"
+      statusMessage = "已開啟 Finder 垃圾桶。"
     } else {
       errorMessage = "macOS 沒有回傳可開啟的 Finder 垃圾桶位置。"
     }

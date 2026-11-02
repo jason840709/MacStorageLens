@@ -245,7 +245,7 @@ enum ScanProgressParser {
     case "largefiles": return "大檔案附加掃描"
     case "metadata": return "APFS 與系統狀態"
     case "report": return "建立報告"
-    case "finalize": return "自我檢查"
+    case "finalize": return "檢查報告"
     case "complete": return "完成"
     case "cancelled": return "已取消"
     default: return phase

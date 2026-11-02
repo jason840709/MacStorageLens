@@ -30,7 +30,7 @@ struct DirectFilesInspectorView: View {
       VStack(alignment: .leading, spacing: 5) {
         Text("直接檔案")
           .font(.title2.weight(.semibold))
-        Text("這不是一個真實資料夾，而是直接位於目前資料夾、未歸入任何子資料夾的檔案總和。")
+        Text("目前資料夾第一層的檔案，不含子資料夾內容。掃描時的估計來自資料夾總占用扣除已列出子資料夾後的差額，可能包含未列出的資料與資料夾本身的占用。")
           .font(.callout)
           .foregroundStyle(.secondary)
           .fixedSize(horizontal: false, vertical: true)
@@ -64,9 +64,6 @@ struct DirectFilesInspectorView: View {
           .controlSize(.large)
         Text("正在讀取此資料夾中的直接檔案…")
           .font(.headline)
-        Text("只列出第一層檔案，不會進入子資料夾，也不會刪除任何內容。")
-          .font(.caption)
-          .foregroundStyle(.secondary)
       }
       .frame(maxWidth: .infinity, maxHeight: .infinity)
     } else if let inspection = model.directFilesInspection {
@@ -103,7 +100,7 @@ struct DirectFilesInspectorView: View {
           } description: {
             Text(error)
           } actions: {
-            Button("在 Finder 開啟父資料夾") {
+            Button("在 Finder 中顯示父資料夾") {
               model.openInFinder(inspection.parentPath)
             }
           }
@@ -112,7 +109,7 @@ struct DirectFilesInspectorView: View {
           ContentUnavailableView {
             Label(query.isEmpty ? "沒有直接檔案" : "找不到符合項目", systemImage: "doc")
           } description: {
-            Text(query.isEmpty ? "掃描當下的差額可能包含目錄 metadata、APFS 配置差異，或檔案已在之後移動。" : "請修改搜尋文字。")
+            Text(query.isEmpty ? "檔案可能已移動，或掃描估計中包含資料夾及檔案系統本身的占用空間。" : "請修改搜尋文字。")
           }
           .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else {
@@ -138,13 +135,13 @@ struct DirectFilesInspectorView: View {
   private func summary(_ inspection: DirectFilesInspection) -> some View {
     HStack(spacing: 12) {
       InspectorMetric(
-        title: "圖表估計",
+        title: "掃描時估計占用",
         value: inspection.expectedAllocatedBytes.formattedBytes,
         symbol: "chart.pie.fill",
         tint: LensTheme.accentSoft
       )
       InspectorMetric(
-        title: "即時列出",
+        title: "目前檔案占用",
         value: inspection.liveAllocatedBytes.formattedBytes,
         symbol: "doc.on.doc",
         tint: LensTheme.sage
@@ -161,13 +158,13 @@ struct DirectFilesInspectorView: View {
 
   private var footer: some View {
     HStack(spacing: 12) {
-      Label("直接檔案不是垃圾分類；本 App 不會整批刪除。請先在 Finder 逐項確認。", systemImage: "shield.lefthalf.filled")
+      Text("檔案大小是內容的位元組數，可能與磁碟占用空間不同。")
         .font(.caption)
         .foregroundStyle(.secondary)
 
       Spacer()
 
-      Button("開啟父資料夾") {
+      Button("在 Finder 中顯示父資料夾") {
         if let path = model.directFilesInspection?.parentPath ?? model.directFilesParentPath {
           model.openInFinder(path)
         }
@@ -262,7 +259,7 @@ private struct DirectFileRow: View {
           .font(.caption.weight(.semibold))
           .monospacedDigit()
         if entry.logicalBytes != entry.allocatedBytes {
-          Text("邏輯 \(entry.logicalBytes.formattedBytes)")
+          Text("檔案大小 \(entry.logicalBytes.formattedBytes)")
             .font(.caption2)
             .foregroundStyle(.secondary)
         }

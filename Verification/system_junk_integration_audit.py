@@ -10,6 +10,7 @@ metadata = (root / "Sources/MacStorageLens/AppMetadata.swift").read_text()
 build = (root / "scripts/建立並啟動.command").read_text()
 verify_script = (root / "scripts/驗證原始碼.command").read_text()
 notices = (root / "THIRD_PARTY_NOTICES.md").read_text()
+source_review = (root / "docs/MACSAI_SOURCE_REVIEW.md").read_text()
 
 checks = {
     "scope app leftovers": "case appLeftovers" in models,
@@ -82,9 +83,8 @@ checks = {
         and "model.cleanupConfiguration.requiresScope" in view
         and "UltraAggressiveOptionsStrip" in view
         and "model.setPresetOptionalCleanupScope" in view
-        and "CleanupResearchReferenceNote" in view
-        and "部分垃圾判定規則參考 MacSai 開源實作" in view
-        and "掃描、風險分級、候選選取與刪除前重驗證均由 MacStorageLens 自行實作" in view
+        and "model.cleanupProfile == .ultraAggressive" in view
+        and "model.cleanupProfile == .custom" in view
     ),
     "L5 optional scopes are explicit and persisted": (
         "requiresExplicitPresetOptIn" in models
@@ -97,11 +97,11 @@ checks = {
         and "configuration.requiresScope(scope)" in engine
         and "case .highImpactUserData, .trashBins, .systemManagedReview:\n      return limit >= .ultraAggressive" not in engine
     ),
-    "release identity 1.8.0 build 35": (
-        'fallbackVersion = "1.8.0"' in metadata
-        and 'fallbackBuild = "35"' in metadata
-        and 'APP_VERSION="1.8.0"' in build
-        and 'APP_BUILD="35"' in build
+    "release identity 2.0.0 build 36": (
+        'fallbackVersion = "2.0.0"' in metadata
+        and 'fallbackBuild = "36"' in metadata
+        and 'APP_VERSION="2.0.0"' in build
+        and 'APP_BUILD="36"' in build
     ),
     "incremental index schema bumped": "currentSchemaVersion = 7" in index,
     "excluded broad caches filtered before sizing": (
@@ -117,6 +117,7 @@ checks = {
         "MacSai-LICENSE.txt" in notices and "BSD 3-Clause" in notices
         and (root / "ThirdParty/MacSai-LICENSE.txt").exists()
     ),
+    "research review retained in documentation": "MacSai source review" in source_review,
 }
 failed = [name for name, ok in checks.items() if not ok]
 if failed:

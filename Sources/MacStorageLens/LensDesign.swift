@@ -387,9 +387,9 @@ struct LensPageHeader<Actions: View>: View {
   private let actions: Actions
 
   init(
-    eyebrow: String,
+    eyebrow: String = "",
     title: String,
-    subtitle: String,
+    subtitle: String = "",
     @ViewBuilder actions: () -> Actions
   ) {
     self.eyebrow = eyebrow
@@ -401,19 +401,23 @@ struct LensPageHeader<Actions: View>: View {
   var body: some View {
     HStack(alignment: .bottom, spacing: 24) {
       VStack(alignment: .leading, spacing: 7) {
-        Text(eyebrow.uppercased())
-          .font(.caption2.weight(.bold))
-          .tracking(1.15)
-          .foregroundStyle(LensTheme.accentSoft)
+        if !eyebrow.isEmpty {
+          Text(eyebrow.uppercased())
+            .font(.caption2.weight(.bold))
+            .tracking(1.15)
+            .foregroundStyle(LensTheme.accentSoft)
+        }
 
         Text(title)
           .font(.system(size: 31, weight: .semibold))
           .tracking(-0.5)
 
-        Text(subtitle)
-          .font(.callout)
-          .foregroundStyle(.secondary)
-          .fixedSize(horizontal: false, vertical: true)
+        if !subtitle.isEmpty {
+          Text(subtitle)
+            .font(.callout)
+            .foregroundStyle(.secondary)
+            .fixedSize(horizontal: false, vertical: true)
+        }
       }
 
       Spacer(minLength: 16)
@@ -423,7 +427,7 @@ struct LensPageHeader<Actions: View>: View {
 }
 
 extension LensPageHeader where Actions == EmptyView {
-  init(eyebrow: String, title: String, subtitle: String) {
+  init(eyebrow: String = "", title: String, subtitle: String = "") {
     self.init(eyebrow: eyebrow, title: title, subtitle: subtitle) { EmptyView() }
   }
 }

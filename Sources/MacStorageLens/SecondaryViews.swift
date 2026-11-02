@@ -7,9 +7,8 @@ struct HistoryView: View {
     ScrollView {
       VStack(alignment: .leading, spacing: 20) {
         LensPageHeader(
-          eyebrow: "報告管理",
           title: "掃描紀錄",
-          subtitle: "每個系統、磁碟或資料夾各自保存最新一份完整報告；同一位置的新掃描會取代舊紀錄。"
+          subtitle: "每個位置只保留最新完成的報告；再次掃描同一位置會取代舊報告。"
         ) {
           HStack(spacing: 8) {
             Button("開啟資料夾") { model.openReportsFolder() }
@@ -32,7 +31,7 @@ struct HistoryView: View {
               VStack(alignment: .leading, spacing: 7) {
                 Text("沒有掃描報告")
                   .font(.title3.weight(.semibold))
-                Text("先執行完整掃描，或從工具列匯入既有 Markdown 報告。不同位置完成後會各自出現在這裡。")
+                Text("先掃描一個位置，或從工具列匯入既有報告。")
                   .font(.callout)
                   .foregroundStyle(.secondary)
               }
@@ -47,9 +46,6 @@ struct HistoryView: View {
               symbol: "clock.arrow.circlepath",
               tint: LensTheme.accentSoft
             )
-            Text("同一位置永遠只保留最新完整報告")
-              .font(.caption)
-              .foregroundStyle(.secondary)
           }
 
           VStack(spacing: 12) {
@@ -182,9 +178,7 @@ struct SettingsView: View {
     ScrollView {
       VStack(alignment: .leading, spacing: 18) {
         LensPageHeader(
-          eyebrow: "偏好設定",
-          title: "設定與安全邊界",
-          subtitle: "只保留能改變工作流程、開啟資料或解釋目前狀態的設定。"
+          title: "設定"
         )
 
         LensPanel(padding: 0, elevated: true) {
@@ -223,7 +217,7 @@ struct SettingsView: View {
       symbol: "lock.shield.fill",
       tint: probeTint,
       title: "完整磁碟存取權",
-      subtitle: "由 MacStorageLens App 本身核對受 TCC 保護的測試路徑。"
+      subtitle: "檢查這個 App 能否讀取 macOS 保護的資料。"
     ) {
       VStack(alignment: .leading, spacing: 10) {
         HStack(spacing: 8) {
@@ -254,17 +248,12 @@ struct SettingsView: View {
     SettingsActionRow(
       symbol: "arrow.triangle.branch",
       tint: LensTheme.accentSoft,
-      title: "APFS 帳務模型",
-      subtitle: "路徑資料、磁碟帳務、快照與真正空閒會分開顯示。"
+      title: "容量如何計算",
+      subtitle: "檔案大小、快照、其他磁碟區與可用空間分開顯示。"
     ) {
       VStack(alignment: .leading, spacing: 10) {
-        Text("未歸屬差額不會被猜成垃圾；Data 資料樹、df／APFS 已用容量、其他卷與 snapshot 會各自保留語意。")
-          .font(.caption)
-          .foregroundStyle(.secondary)
-          .fixedSize(horizontal: false, vertical: true)
-
         HStack(spacing: 8) {
-          Button("查看帳務核對") { model.destination = .overview }
+          Button("查看容量明細") { model.destination = .overview }
             .buttonStyle(LensButtonStyle(kind: .primary, compact: true))
           Button("macOS 儲存空間") { ScannerLauncher.openStorageSettings() }
             .buttonStyle(LensButtonStyle(kind: .secondary, compact: true))
@@ -277,8 +266,8 @@ struct SettingsView: View {
     SettingsActionRow(
       symbol: "trash.slash.fill",
       tint: LensTheme.clay,
-      title: "清理安全邊界",
-      subtitle: "在這裡設定預設掃描等級，並直接前往候選與操作紀錄。"
+      title: "進階規則",
+      subtitle: "這裡的預設等級只影響進階規則，不影響一鍵清理。"
     ) {
       VStack(alignment: .leading, spacing: 11) {
         ViewThatFits(in: .horizontal) {
@@ -300,10 +289,10 @@ struct SettingsView: View {
 
         DisclosureGroup(isExpanded: $showsCleanupBoundary) {
           VStack(alignment: .leading, spacing: 7) {
-            Label("一般候選預設不勾選；可逆操作只進 Finder 可見垃圾桶，直接刪除不經垃圾桶。", systemImage: "checkmark.circle")
-            Label("受管理命令與高影響項目必須額外確認。", systemImage: "exclamationmark.bubble")
+            Label("一般候選預設不選取。移到垃圾桶的項目可在 Finder 中查看；直接刪除不經垃圾桶。", systemImage: "checkmark.circle")
+            Label("使用套件管理工具清理，或刪除備份等高影響資料前，App 會再次要求確認。", systemImage: "exclamationmark.bubble")
             Label(
-              "系統磁碟的 CloudKit、Application Support、VM、Preboot、Spotlight、snapshot 與系統資料庫永久禁止直接清理。一般位置的 .Spotlight-V100／.fseventsd 只在 L5 逐項手動開放，且不參與全選。",
+              "系統磁碟中的 CloudKit、Application Support、虛擬記憶體、啟動資料、Spotlight 索引、快照與系統資料庫一律不能直接清理。其他位置的 .Spotlight-V100 與 .fseventsd 只在最高等級逐項開放，且不參與全選。",
               systemImage: "nosign"
             )
           }
@@ -312,7 +301,7 @@ struct SettingsView: View {
           .padding(.top, 7)
         } label: {
           Label(
-            showsCleanupBoundary ? "收合永久安全邊界" : "查看永久安全邊界",
+            showsCleanupBoundary ? "收合清理限制" : "查看清理限制",
             systemImage: "checkmark.shield"
           )
           .font(.caption.weight(.semibold))
@@ -324,11 +313,11 @@ struct SettingsView: View {
 
   private var cleanupProfilePicker: some View {
     HStack(spacing: 9) {
-      Text("預設清理等級")
+      Text("進階規則預設等級")
         .font(.caption.weight(.semibold))
         .foregroundStyle(.secondary)
       Picker(
-        "預設清理等級",
+        "進階規則預設等級",
         selection: Binding(
           get: { model.cleanupProfile.rawValue },
           set: { rawValue in
@@ -361,7 +350,7 @@ struct SettingsView: View {
       symbol: "internaldrive.fill",
       tint: LensTheme.plum,
       title: "本機資料",
-      subtitle: "報告、掃描工作與清理紀錄都只保存在這台 Mac。"
+      subtitle: "掃描報告與清理紀錄只保存在這台 Mac。"
     ) {
       VStack(alignment: .leading, spacing: 11) {
         LazyVGrid(
@@ -416,9 +405,9 @@ struct SettingsView: View {
     switch model.appFullDiskAccessProbe.state {
     case .checking: return "正在檢查"
     case .available: return "App 可讀"
-    case .blocked: return "尚未授權"
+    case .blocked: return "macOS 拒絕讀取"
     case .indeterminate: return "無法判定"
-    case .notApplicable: return "所選位置不需要"
+    case .notApplicable: return "未檢查系統資料權限"
     }
   }
 

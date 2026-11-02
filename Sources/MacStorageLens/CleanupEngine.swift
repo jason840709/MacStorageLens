@@ -205,7 +205,7 @@ final class CleanupEngine {
       guard selected.allSatisfy(\.supportsFinderVisibleTrash) else {
         let directOnly = selected.filter { !$0.supportsFinderVisibleTrash }.map(\.displayName)
         throw CleanupValidationError.rejected(
-          "下列項目不能假裝移到垃圾桶，必須改用『直接徹底刪除』："
+          "下列項目無法移到 Finder 垃圾桶；若要移除，需改用「直接徹底刪除」，且無法從 Finder 還原："
             + directOnly.joined(separator: "、")
         )
       }
@@ -442,7 +442,7 @@ final class CleanupEngine {
         displayName: friendlyIdentifier(name),
         bytes: sizes[url.path] ?? 0,
         risk: isApple ? .low : .minimal,
-        reason: "標準 ~/Library/Caches 子目錄；依 macOS 目錄語意，內容應可由 App 重新建立。",
+        reason: "App 的標準快取資料夾；內容通常可在下次使用時重建。",
         impact: isApple
           ? "Apple 服務可能重新分析、建立縮圖或下載資源。"
           : "相關 App 第一次啟動可能較慢，並重新下載部分資源。",
@@ -514,7 +514,7 @@ final class CleanupEngine {
         displayName: friendlyIdentifier(groupID),
         bytes: sizes[url.path] ?? 0,
         risk: .low,
-        reason: "Group Container 中名稱與位置都明確的標準 Caches 目錄。",
+        reason: "多個 App 共用容器中的標準快取。",
         impact: "同一開發者的多個 App 可能共同重新建立或下載這些資料。",
         recovery: "由所屬 App 群組自動重建。"
       )
@@ -536,10 +536,10 @@ final class CleanupEngine {
         category: .clipboardArchive,
         action: .moveContentsToTrash,
         path: clipboardArchiveURL.path,
-        displayName: "Universal Clipboard 封存暫存",
+        displayName: "跨裝置剪貼簿暫存",
         bytes: bytes,
         risk: .low,
-        reason: "Handoff／Universal Clipboard 的 shared-pasteboard 封存；異常時可能持續累積。",
+        reason: "Mac 與其他 Apple 裝置共用剪貼內容的暫存；異常時可能持續累積。",
         impact: "目前跨裝置剪貼簿內容會消失；清理時不得有 Finder 複製作業。",
         recovery: "重新使用 Handoff／跨裝置剪貼簿時由系統重新建立。"
       )
@@ -610,11 +610,11 @@ final class CleanupEngine {
         bytes: sizes[url.path] ?? 0,
         risk: metadata.1 ? .moderate : .low,
         reason: metadata.1
-          ? "名稱明確的 Service Worker／WebStorage CacheStorage；不包含 Cookie、IndexedDB、Local Storage 或資料庫。"
-          : "Application Support 中名稱明確的 Cache、Code Cache、GPUCache 或 shader cache；不刪除 App profile。",
+          ? "App 的離線網頁快取；不包含登入 Cookie、網站儲存資料或資料庫。"
+          : "App 的網頁程式碼與繪圖快取；不包含程式的使用者設定。",
         impact: metadata.1
           ? "可能移除離線網頁內容，相關 App 需要重新連線與下載。"
-          : "App 會重新編譯網頁程式碼、GPU shader 或下載暫存。",
+          : "App 會重新編譯網頁程式碼、重建繪圖資料或下載暫存。",
         recovery: "重新啟動並連線後由對應 App 重建。"
       )
     }
@@ -688,7 +688,7 @@ final class CleanupEngine {
           risk: .low,
           reason: spec.reason,
           impact: "相關工具第一次重新啟動、索引或執行時可能較慢，並重新建立或下載 cache。",
-          recovery: "由對應工具在需要時重新建立；使用者設定、專案、sessions 與 extensions 不在此規則中。"
+          recovery: "由對應工具在需要時重新建立；使用者設定、專案、工作紀錄與擴充功能不在此規則中。"
         ))
     }
 
@@ -781,7 +781,7 @@ final class CleanupEngine {
         displayName: "Homebrew 官方 cleanup",
         bytes: estimated,
         risk: .moderate,
-        reason: "使用 brew cleanup 移除過期下載、舊版本與 stale lock；先以 dry-run 估算。",
+        reason: "使用 Homebrew 的清理命令移除過期下載、舊版本與不再使用的鎖定檔；容量已先試算。",
         impact: "符合 Homebrew 預設保留期限的舊版本與下載快取會被永久移除，之後可能重新下載。",
         recovery: "需要時由 Homebrew 重新下載；此動作不是移到垃圾桶。",
         managedCommand: ManagedCleanupCommand(
@@ -839,8 +839,8 @@ final class CleanupEngine {
         displayName: "Conda 未使用套件與下載快取",
         bytes: total,
         risk: .moderate,
-        reason: "使用 conda clean --all --yes --json；不直接刪除 pkgs 目錄，也不使用危險的 --force-pkgs-dirs。",
-        impact: "Conda 會移除 index、lock、tarball、log 與它判定未使用的 package cache；之後可能重新下載。",
+        reason: "使用 Conda 的清理命令移除未使用的套件與下載快取；不清空整個套件資料夾。",
+        impact: "Conda 會移除套件索引、鎖定檔、下載封存、日誌及它判定未使用的套件快取；之後可能重新下載。",
         recovery: "需要的套件可由 Conda 重新下載；此動作不是移到垃圾桶。",
         managedCommand: ManagedCleanupCommand(
           executable: conda,
@@ -890,7 +890,7 @@ final class CleanupEngine {
           risk: .low,
           reason: "Downloads 根層的 .download／.crdownload／.part／.partial／.tmp 已至少 24 小時未修改，視為停滯下載。",
           impact: "若下載工作其實仍要續傳，移除後可能必須重新下載。",
-          recovery: "預設先移到 Finder 可見垃圾桶；確認無需續傳後再清空垃圾桶。"
+          recovery: "若移到垃圾桶，可在清空前還原；直接刪除後可能需要重新下載。"
         )
       case .staleInstaller:
         return CleanupCandidate(
@@ -970,9 +970,9 @@ final class CleanupEngine {
         bytes: sizes[item.path] ?? 0,
         risk: .moderate,
         reason:
-          "只在可重建的 \(kind.displayName) 根層辨識 reverse-DNS 項目；目前標準 App 目錄中找不到相同或同 lineage 的 bundle identifier。",
-        impact: "若 App 安裝在非標準位置，仍可能被誤判，因此此類候選固定需要逐項確認。Preferences、Containers、Keychains 不在掃描範圍。",
-        recovery: "預設移到 Finder 可見垃圾桶；重新安裝／啟動 App 也通常能重建這些 cache、log 或 WebKit 狀態。"
+          "在 \(kind.displayName) 中找到以 App 識別名稱命名的資料；標準程式資料夾中找不到同一個 App。",
+        impact: "若 App 安裝在其他位置，這些資料仍可能需要使用，請逐項確認。偏好設定、App 容器與鑰匙圈不在清理範圍。",
+        recovery: "若移到垃圾桶，可在清空前還原。快取通常可由 App 重建；舊日誌或網頁狀態未必能重建。"
       )
     }
   }
@@ -1015,9 +1015,9 @@ final class CleanupEngine {
         displayName: "損壞 plist · \(friendlyIdentifier(domain))",
         bytes: sizes[item.path] ?? 0,
         risk: .moderate,
-        reason: "PropertyListSerialization 無法解析這個第三方 Preferences plist；不是因為『找不到對應 App』而推測可刪。",
-        impact: "相關 App 的偏好設定可能會在下次啟動時回到預設值；Apple/system domain 已明確排除。",
-        recovery: "先移到 Finder 可見垃圾桶；需要時可還原原檔，或由 App 重新建立有效 plist。"
+        reason: "這個第三方 App 的偏好設定檔格式損壞，無法解析。",
+        impact: "清除後，相關 App 的設定可能在下次啟動時回到預設值。",
+        recovery: "若移到垃圾桶，可在清空前還原原檔；App 也可能重新建立設定檔，但原有設定未必能恢復。"
       )
     }
   }
@@ -1048,7 +1048,7 @@ final class CleanupEngine {
         displayName: diagnostic ? "使用者診斷報告" : friendlyIdentifier(url.lastPathComponent),
         bytes: sizes[url.path] ?? 0,
         risk: .moderate,
-        reason: diagnostic ? "使用者層 crash／diagnostic reports。" : "使用者 Library/Logs 內的 App 日誌。",
+        reason: diagnostic ? "目前使用者的當機與診斷報告。" : "使用者 Library/Logs 內的 App 日誌。",
         impact: "會失去歷史故障排查資料；不影響 App 本體，但可能降低問題診斷能力。",
         recovery: "新的日誌會重新產生；舊紀錄無法由 App 重建。"
       )
@@ -1101,8 +1101,8 @@ final class CleanupEngine {
           displayName: archive.deletingPathExtension().lastPathComponent,
           bytes: archiveSizes[archive.path] ?? 0,
           risk: .high,
-          reason: "Xcode .xcarchive，可能包含發行 binary、dSYM 與除錯符號；不是一般 cache。",
-          impact: "可能失去重新匯出、符號化 crash 或提交舊版本的能力。",
+          reason: "Xcode 封存，可能包含發行程式與分析當機所需的除錯符號。",
+          impact: "可能失去重新匯出、分析當機紀錄或提交舊版本的能力。",
           recovery: "只有保留原始碼與相同建置環境時才可能重新產生。"
         ))
     }
@@ -1209,7 +1209,7 @@ final class CleanupEngine {
         bytes: totalBytes,
         risk: .high,
         reason: root.isExternalVolume
-          ? "Finder 已把這些項目放在本機可寫外接卷宗的 .Trashes/<目前 UID>；掃描只列出目前使用者的第一層項目。"
+          ? "Finder 已把這些項目放在本機可寫外接卷宗的 目前使用者的垃圾桶；掃描只列出目前使用者的第一層項目。"
           : "Finder 已把這些項目放在目前使用者的 ~/.Trash；掃描只列出當下存在的第一層項目。",
         impact: "執行後會永久移除掃描時列出的 \(matchedPaths.count) 個項目，不會再搬進另一個垃圾桶，也無法由 Finder 還原。",
         recovery: "只能依靠 Time Machine、其他備份或檔案系統快照復原。",

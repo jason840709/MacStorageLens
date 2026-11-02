@@ -93,13 +93,17 @@ struct ReportGuidedCleanupAudit {
     )
     check(
       "quick_notice_discloses_server_recycle_skip",
-      quick.notices.contains { $0.contains("#recycle") && $0.contains("略過") }
+      quick.notices.contains {
+        $0.contains("NAS 伺服器回收區") && $0.contains("由伺服器管理")
+      }
     )
     let reportText = try String(contentsOf: reportURL, encoding: .utf8)
     check("markdown_tree_contains_no_file_rows", !reportText.contains(".DS_Store"))
     check(
       "quick_notice_discloses_snapshot_boundary",
-      quick.notices.contains { $0.contains("新增但不在報告中的整個新資料夾") }
+      quick.notices.contains {
+        $0.contains("容量報告建立後新增的整個資料夾") && $0.contains("完整重新掃描")
+      }
     )
 
     let full = try engine.scanCandidates(

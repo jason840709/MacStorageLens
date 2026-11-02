@@ -190,7 +190,7 @@ struct ReportAudit {
         "runtime_2_5_1_not_legacy_ambiguous"
       )
       try check(
-        summary.scanChannelDisplayName == "App TCC + 管理員",
+        summary.scanChannelDisplayName == "App 與管理員授權",
         "runtime_2_5_1_channel_display"
       )
     } else if summary.scannerVersion == "2.5.0",

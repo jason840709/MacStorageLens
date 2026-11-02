@@ -300,10 +300,10 @@ struct FolderCleanupAudit {
     check(
       "scan_notice_reports_appledouble_classification",
       results[.ultraAggressive]?.notices.contains(where: {
-        $0.contains("Finder／Windows 伴隨 2")
-          && $0.contains("孤立 metadata 1")
-          && $0.contains("配對 metadata 1")
-          && $0.contains("敏感內容 6")
+        $0.contains("Finder／Windows 顯示資料 2")
+          && $0.contains("主檔已不存在 1")
+          && $0.contains("主檔仍存在 1")
+          && $0.contains("含重要內容 6")
           && $0.contains("無法驗證 1")
       }) == true
     )

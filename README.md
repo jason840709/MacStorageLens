@@ -4,11 +4,11 @@
 
 # MacStorageLens（磁碟透視）
 
-**原生 SwiftUI macOS 儲存空間分析與安全分級清理工具。**
+**原生 SwiftUI macOS 儲存空間分析、一鍵安全清理與檔案整理工具。**
 
-MacStorageLens 把 APFS/磁碟容量帳務、可遍歷資料樹、未解析空間差額與清理候選分開呈現；清理採白名單規則、風險分級、使用者明確選取與執行前重新驗證，不把「看不懂的系統資料」直接當成垃圾。
+MacStorageLens 顯示磁碟容量、各資料夾的占用空間，以及尚未解析到路徑的容量差額。一鍵清理會重新掃描並直接移除符合條件的已知快取與舊診斷；檔案整理則由使用者選取、確認後移到垃圾桶。詳細條件與清理後果見[清理邏輯](docs/cleanup-logic.md)。
 
-- **版本**：1.8.0（Build 35）
+- **版本**：2.0.0（Build 36）
 - **Scanner**：2.5.4
 - **最低系統**：macOS 14
 - **開發者 / Author**：**Jason Chen**
@@ -21,13 +21,16 @@ MacStorageLens 把 APFS/磁碟容量帳務、可遍歷資料樹、未解析空�
 
 ![MacStorageLens 畫面預覽：顯示總容量、可回收估計與可鑽取的 Sunburst 視覺化](docs/screenshots/macstoragelens-storage-overview.png)
 
-上圖展示 MacStorageLens 的主畫面：左側提供總覽、資料樹、安全清理、掃描紀錄與設定等入口；中間以卡片整理總容量、已使用空間、真正空間與可回收估計；右側用可鑽取的 Sunburst 視覺化呈現 APFS 容量分布，讓使用者在執行清理前先理解空間結構與風險範圍。
+上圖為早期版本畫面；2.0.0 已調整頁面文字與安全清理介面。
 
 ## 主要功能
 
 - APFS / volume / free-space / directory-tree 容量分析與 Markdown 報告。
 - 容量總覽、資料樹與可鑽取 Sunburst 視覺化。
-- 六級安全清理：超級保守、保守、平衡、激進、超激進、自定義。
+- 一鍵安全清理：重新掃描後直接清除符合期限的已知快取與舊診斷，不經垃圾桶。
+- 五種人工整理：專案建置資料、安裝檔、大型與舊檔、完整內容重複比對、程式與關聯資料。
+- 保留清單、判斷原因、內容檢視、取消與本機清理紀錄。
+- 進階規則保留六級安全清理：超級保守、保守、平衡、激進、超激進、自定義。
 - Finder 可見垃圾桶與「直接徹底刪除」兩條明確執行路徑。
 - 外接磁碟、SD/USB 與部分 NAS/遠端掛載的 capability-aware 行為。
 - AppleDouble、App cache、開發工具 cache、package-manager cache、App leftovers、logs/diagnostics 等受控規則。
@@ -94,7 +97,7 @@ MacStorageLens/
 
 ## 安全設計
 
-MacStorageLens 不是「一鍵刪除器」。清理遵循以下原則：
+清理遵循以下原則：
 
 1. 掃描、候選判定、實際刪除分層。
 2. 高風險候選預設不選取。
@@ -103,6 +106,10 @@ MacStorageLens 不是「一鍵刪除器」。清理遵循以下原則：
 5. 永久刪除不等於安全覆寫或鑑識級抹除。
 
 詳見 [`SECURITY.md`](SECURITY.md)。
+
+## 2.0.0
+
+安全清理改為一鍵處理與五種人工整理工具。完整說明：[版本更新](docs/release-notes/2.0.0.md)、[清理邏輯](docs/cleanup-logic.md)、[研究對照](docs/cleanup-research.md)、[維護與擴充](docs/cleanup-development.md)。
 
 ## 1.8.0
 

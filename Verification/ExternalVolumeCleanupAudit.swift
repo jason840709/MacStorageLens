@@ -218,7 +218,13 @@ struct ExternalVolumeCleanupAudit {
     check(
       "cleanup_engine_direct_delete_has_no_trash", cleanupEngine.contains("immediate_direct_delete")
     )
-    check("cleanup_engine_rejects_direct_only_in_trash_mode", cleanupEngine.contains("不能假裝移到垃圾桶"))
+    let directOnlyGuard =
+      cleanupEngine.components(
+        separatedBy: "guard selected.allSatisfy(\\.supportsFinderVisibleTrash) else {"
+      ).dropFirst().first?.components(separatedBy: "entries = selected.map").first ?? ""
+    check(
+      "cleanup_engine_rejects_direct_only_in_trash_mode",
+      directOnlyGuard.contains("throw CleanupValidationError.rejected("))
     check(
       "folder_engine_surfaces_legacy_residues",
       folderEngine.contains("appendLegacyHiddenTrashResiduesIfIncluded"))

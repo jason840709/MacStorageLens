@@ -115,58 +115,58 @@ enum SystemJunkKnowledge {
   static let packageManagerCacheSpecs: [KnownCacheSpec] = [
     KnownCacheSpec(
       relativePath: ".npm/_cacache", displayName: "npm 內容快取",
-      reason: "npm 的 content-addressable 下載快取。", safety: .rebuildable),
+      reason: "npm 下載的套件內容快取，可重新下載。", safety: .rebuildable),
     KnownCacheSpec(
       relativePath: ".npm/_npx", displayName: "npx 執行快取",
       reason: "npx 下載的臨時工具與套件。", safety: .cautious),
     KnownCacheSpec(
       relativePath: ".cache/pip", displayName: "pip 下載快取",
-      reason: "pip wheel 與 HTTP cache。", safety: .rebuildable),
+      reason: "pip 下載的套件快取，可重新下載。", safety: .rebuildable),
     KnownCacheSpec(
       relativePath: "Library/Caches/pip", displayName: "pip 下載快取",
-      reason: "pip wheel 與 HTTP cache。", safety: .rebuildable),
+      reason: "pip 下載的套件快取，可重新下載。", safety: .rebuildable),
     KnownCacheSpec(
       relativePath: ".cache/uv", displayName: "uv 套件快取",
       reason: "uv 下載與建置快取。", safety: .rebuildable),
     KnownCacheSpec(
       relativePath: ".cache/pypoetry", displayName: "Poetry 快取",
-      reason: "Poetry 套件與 metadata 快取。", safety: .rebuildable),
+      reason: "Poetry 下載的套件與清單快取，可重新下載。", safety: .rebuildable),
     KnownCacheSpec(
-      relativePath: ".gradle/caches", displayName: "Gradle caches",
+      relativePath: ".gradle/caches", displayName: "Gradle 套件與建置快取",
       reason: "Gradle 相依套件與建置快取。", safety: .rebuildable),
     KnownCacheSpec(
-      relativePath: ".gradle/daemon", displayName: "Gradle daemon cache",
-      reason: "Gradle daemon 的可重建工作狀態；清理後 daemon 需要重新啟動。", safety: .cautious),
+      relativePath: ".gradle/daemon", displayName: "Gradle 執行狀態",
+      reason: "Gradle 執行中的暫存狀態；清除後需重新啟動 Gradle。", safety: .cautious),
     KnownCacheSpec(
-      relativePath: ".gradle/wrapper/dists", displayName: "Gradle wrapper distributions",
+      relativePath: ".gradle/wrapper/dists", displayName: "Gradle 下載的版本",
       reason: "Gradle Wrapper 下載的發行版本，可在需要時重新下載。", safety: .rebuildable),
     KnownCacheSpec(
-      relativePath: ".cargo/registry/cache", displayName: "Cargo registry cache",
-      reason: "Rust crates 下載封存。", safety: .rebuildable),
+      relativePath: ".cargo/registry/cache", displayName: "Cargo 套件下載快取",
+      reason: "Rust 套件的下載檔，可重新下載。", safety: .rebuildable),
     KnownCacheSpec(
-      relativePath: ".cargo/registry/src", displayName: "Cargo registry sources",
-      reason: "由 crates 封存解出的 registry source cache，可重新展開或下載。", safety: .rebuildable),
+      relativePath: ".cargo/registry/src", displayName: "Cargo 套件原始碼快取",
+      reason: "Rust 套件解壓後的原始碼快取，可重新下載或解壓。", safety: .rebuildable),
     KnownCacheSpec(
-      relativePath: ".cargo/git/db", displayName: "Cargo Git cache",
-      reason: "Cargo 的 Git dependency cache。", safety: .rebuildable),
+      relativePath: ".cargo/git/db", displayName: "Cargo Git 套件快取",
+      reason: "Cargo 下載的 Git 套件快取，可重新下載。", safety: .rebuildable),
     KnownCacheSpec(
-      relativePath: "Library/Caches/CocoaPods", displayName: "CocoaPods cache",
+      relativePath: "Library/Caches/CocoaPods", displayName: "CocoaPods 下載快取",
       reason: "CocoaPods 下載快取。", safety: .rebuildable),
     KnownCacheSpec(
-      relativePath: "Library/Caches/org.swift.swiftpm", displayName: "SwiftPM cache",
-      reason: "Swift Package Manager 下載與 metadata cache。", safety: .rebuildable),
+      relativePath: "Library/Caches/org.swift.swiftpm", displayName: "Swift 套件下載快取",
+      reason: "Swift 套件管理器下載的套件與清單快取，可重新下載。", safety: .rebuildable),
     KnownCacheSpec(
-      relativePath: "Library/Caches/Yarn", displayName: "Yarn cache",
+      relativePath: "Library/Caches/Yarn", displayName: "Yarn 下載快取",
       reason: "Yarn 套件下載快取。", safety: .rebuildable),
     KnownCacheSpec(
-      relativePath: ".cache/yarn", displayName: "Yarn cache",
+      relativePath: ".cache/yarn", displayName: "Yarn 下載快取",
       reason: "Yarn 套件下載快取。", safety: .rebuildable),
     KnownCacheSpec(
-      relativePath: ".yarn/berry/cache", displayName: "Yarn Berry global cache",
-      reason: "Yarn Berry 的壓縮套件 cache；離線建置可能依賴它。", safety: .cautious),
+      relativePath: ".yarn/berry/cache", displayName: "Yarn 壓縮套件快取",
+      reason: "Yarn 的壓縮套件快取；離線建置可能需要這些檔案。", safety: .cautious),
     KnownCacheSpec(
-      relativePath: ".m2/repository", displayName: "Maven local repository",
-      reason: "多數為可重新下載的 Maven artifacts，但也可能包含只在本機 install 的套件。",
+      relativePath: ".m2/repository", displayName: "Maven 本機套件",
+      reason: "多數 Maven 套件可重新下載，但也可能包含只保存在本機的套件。",
       safety: .cautious),
   ]
 
@@ -181,28 +181,28 @@ enum SystemJunkKnowledge {
           KnownCacheSpec(
             relativePath: "Library/Application Support/\(editor)/\(cacheName)",
             displayName: "\(editor) · \(cacheName)",
-            reason: "VS Code／Electron 系編輯器的標準 cache 目錄；User 設定與 extensions 明確排除。",
+            reason: "編輯器的快取；使用者設定與擴充功能不在清理範圍。",
             safety: .rebuildable
           ))
       }
     }
     specs.append(contentsOf: [
       KnownCacheSpec(
-        relativePath: ".claude/cache", displayName: "Claude cache",
-        reason: "Claude 的 cache 目錄；projects、file-history 等使用者資料不在 allowlist。",
+        relativePath: ".claude/cache", displayName: "Claude 快取",
+        reason: "Claude 的快取；專案與檔案歷史不在清理範圍。",
         safety: .rebuildable),
       KnownCacheSpec(
-        relativePath: ".claude/paste-cache", displayName: "Claude paste cache",
-        reason: "Claude 的 paste cache；不掃描 projects 或歷史資料。", safety: .rebuildable),
+        relativePath: ".claude/paste-cache", displayName: "Claude 貼上內容快取",
+        reason: "Claude 貼上內容的快取；專案與歷史資料不在清理範圍。", safety: .rebuildable),
       KnownCacheSpec(
-        relativePath: ".claude/shell-snapshots", displayName: "Claude shell snapshots",
-        reason: "Claude 的 shell scratch snapshots；不擴大到其他 .claude 內容。", safety: .rebuildable),
+        relativePath: ".claude/shell-snapshots", displayName: "Claude 命令暫存快照",
+        reason: "Claude 執行命令時產生的暫存快照；其他 Claude 資料不在清理範圍。", safety: .rebuildable),
       KnownCacheSpec(
-        relativePath: ".codex/.tmp", displayName: "Codex temporary cache",
-        reason: "Codex 的明確 temporary 目錄；sessions 不在 allowlist。", safety: .rebuildable),
+        relativePath: ".codex/.tmp", displayName: "Codex 暫存檔",
+        reason: "Codex 的暫存檔；工作紀錄不在清理範圍。", safety: .rebuildable),
       KnownCacheSpec(
-        relativePath: ".codex/cache", displayName: "Codex cache",
-        reason: "Codex 的 cache 目錄；sessions 與 archived_sessions 明確排除。", safety: .rebuildable),
+        relativePath: ".codex/cache", displayName: "Codex 快取",
+        reason: "Codex 的快取；目前與封存的工作紀錄不在清理範圍。", safety: .rebuildable),
     ])
     return specs
   }()

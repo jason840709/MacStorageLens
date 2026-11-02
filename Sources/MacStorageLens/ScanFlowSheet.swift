@@ -6,6 +6,7 @@ struct ScanFlowSheet: View {
   @Environment(\.colorScheme) private var colorScheme
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
   @LensState private var isConfirmingCancellation = false
+  @LensState private var showsTimingDetails = false
 
   var body: some View {
     VStack(spacing: 0) {
@@ -21,9 +22,9 @@ struct ScanFlowSheet: View {
     .frame(minWidth: 760, idealWidth: 760, maxWidth: 760, minHeight: 690, idealHeight: 760)
     .background(LensTheme.canvas(colorScheme))
     .interactiveDismissDisabled(model.isFullScanRunning || model.isLoadingReport)
-    .alert("取消完整掃描？", isPresented: $isConfirmingCancellation) {
+    .alert("停止本次掃描？", isPresented: $isConfirmingCancellation) {
       Button("繼續掃描", role: .cancel) {}
-      Button("安全停止", role: .destructive) { model.cancelFullScan() }
+      Button("停止掃描", role: .destructive) { model.cancelFullScan() }
     } message: {
       Text("App 會停止目前的唯讀工作、移除本次未完成報告，並保留上一份完成報告。")
     }
@@ -35,9 +36,11 @@ struct ScanFlowSheet: View {
       VStack(alignment: .leading, spacing: 2) {
         Text(scanTitle)
           .font(.title2.weight(.semibold))
-        Text("唯讀分析 · 顯示心跳與階段進度 · 完成後自動載入")
-          .font(.caption)
-          .foregroundStyle(.secondary)
+        if case .authorization = model.scanSheetPhase {
+          Text("完成後自動顯示容量地圖。")
+            .font(.caption)
+            .foregroundStyle(.secondary)
+        }
       }
       Spacer()
       if !model.isFullScanRunning && !model.isLoadingReport {
@@ -73,7 +76,7 @@ struct ScanFlowSheet: View {
 
   private var scanTitle: String {
     switch model.selectedScanTarget.kind {
-    case .system: return "完整系統儲存空間掃描"
+    case .system: return "系統儲存空間掃描"
     case .volume: return "磁碟掃描"
     case .folder: return "資料夾掃描"
     }
@@ -142,20 +145,20 @@ struct ScanFlowSheet: View {
 
       PermissionExplanationRow(
         symbol: "eye.fill", tint: LensTheme.accentSoft,
-        title: "只讀取容量與檔案 metadata",
-        detail: "掃描器不會刪除、移動、清空、修復或修改任何使用者／系統資料。"
+        title: "唯讀掃描",
+        detail: "掃描只讀取容量與檔案資訊，不會刪除、移動或修改資料。"
       )
-      PermissionExplanationRow(
-        symbol: "person.badge.shield.checkmark.fill", tint: LensTheme.sage,
-        title: model.selectedScanTarget.kind == .system ? "App TCC 與管理員權限分工" : "由 App 直接使用所選位置權限",
-        detail: model.selectedScanTarget.kind == .system
-          ? "先由 MacStorageLens 讀取受 TCC 保護的使用者資料，再把結果合併到管理員唯讀系統掃描；密碼仍只由 macOS 處理。"
-          : "磁碟與資料夾模式不繞到獨立管理員子程序，避免遺失 App 的完整磁碟存取或使用者選取權限。"
-      )
+      if model.selectedScanTarget.kind == .system {
+        PermissionExplanationRow(
+          symbol: "person.badge.shield.checkmark.fill", tint: LensTheme.sage,
+          title: "管理員授權由 macOS 處理",
+          detail: "選擇管理員掃描後，macOS 會要求授權；密碼只交給 macOS。"
+        )
+      }
       PermissionExplanationRow(
         symbol: "waveform.path.ecg", tint: LensTheme.sand,
-        title: "掃描期間持續回報心跳",
-        detail: "畫面會顯示目前階段、路徑、步驟與節點數；長時間沒有心跳時會警告並安全中止。"
+        title: "App 掃描進度",
+        detail: "使用 App 掃描時，畫面會顯示目前階段與位置；長時間沒有進展時，App 會提醒並停止掃描。"
       )
 
       LensPanel(padding: 13, radius: 13) {
@@ -177,9 +180,9 @@ struct ScanFlowSheet: View {
             .buttonStyle(LensButtonStyle(kind: .secondary, compact: true))
         }
         Spacer()
-        Button("Terminal 診斷模式") { model.runFullScanInTerminal() }
+        Button("Terminal 掃描") { model.runFullScanInTerminal() }
           .buttonStyle(LensButtonStyle(kind: .quiet))
-          .help("以 Terminal 自己的權限主體執行同一套掃描核心，供權限比對與故障診斷。")
+          .help("在 Terminal 執行相同掃描，使用 Terminal 的磁碟存取權，可用來檢查 App 掃描失敗是否與權限有關。")
 
         if model.selectedScanTarget.kind == .system {
           Button("只用 App 權限") { model.startIntegratedScan(mode: .currentUser) }
@@ -187,7 +190,7 @@ struct ScanFlowSheet: View {
           Button("App + 管理員掃描") { model.startIntegratedScan(mode: .administrator) }
             .buttonStyle(LensButtonStyle(kind: .primary))
             .keyboardShortcut(.defaultAction)
-            .help("先使用 App 的完整磁碟存取，再取得管理員唯讀權限並合併兩個結果。")
+
         } else {
           Button("使用 App 權限掃描") { model.startIntegratedScan(mode: .currentUser) }
             .buttonStyle(LensButtonStyle(kind: .primary))
@@ -252,13 +255,11 @@ struct ScanFlowSheet: View {
             .background(LensTheme.sage.opacity(0.12), in: RoundedRectangle(cornerRadius: 10))
 
           VStack(alignment: .leading, spacing: 4) {
-            Text("所選位置權限")
+            Text("掃描範圍與權限")
               .font(.caption.weight(.semibold))
               .foregroundStyle(.secondary)
-            Text("不需要探測 Mac 的受保護使用者資料")
-              .font(.headline)
             Text(
-              "這次只讀取「\(model.selectedScanTarget.displayName)」。Scanner 2.5.4 不會在開始外接磁碟或資料夾掃描前探測 Mail、Messages、Safari 或 AddressBook，也不會為非 APFS 目標查詢整台 Mac 的 APFS 清單。"
+              "使用 App 對「\(model.selectedScanTarget.displayName)」的讀取權限掃描此位置；所在磁碟的容量資訊會另外顯示。"
             )
             .font(.caption)
             .foregroundStyle(.secondary)
@@ -273,19 +274,11 @@ struct ScanFlowSheet: View {
   private var codeSigningPermissionNote: some View {
     if AppMetadata.codeSigningMode == "ad-hoc" {
       Label(
-        "這份本機建立版使用臨時簽章；每次重新建立後，macOS 可能把它視為新的權限主體，屆時需重新加入完整磁碟存取列表。",
+        "這份本機版重新建立後，macOS 可能要求重新授予完整磁碟存取權。",
         systemImage: "signature"
       )
       .font(.caption2)
       .foregroundStyle(LensTheme.sand)
-      .fixedSize(horizontal: false, vertical: true)
-    } else if AppMetadata.hasStableCodeSigningIdentity {
-      Label(
-        "目前使用穩定的程式簽章身分；同一路徑更新時，macOS 較能持續辨識完整磁碟存取的授權主體。",
-        systemImage: "checkmark.seal.fill"
-      )
-      .font(.caption2)
-      .foregroundStyle(LensTheme.sage)
       .fixedSize(horizontal: false, vertical: true)
     }
   }
@@ -293,10 +286,10 @@ struct ScanFlowSheet: View {
   private var appProbeTitle: String {
     switch model.appFullDiskAccessProbe.state {
     case .checking: return "正在核對完整磁碟存取…"
-    case .available: return "App 直接讀取已通過"
-    case .blocked: return "App 直接讀取被 macOS 阻擋"
+    case .available: return "可讀取受保護資料"
+    case .blocked: return "macOS 拒絕讀取"
     case .indeterminate: return "無法自動判定"
-    case .notApplicable: return "所選位置不需要"
+    case .notApplicable: return "未檢查系統資料權限"
     }
   }
 
@@ -322,12 +315,43 @@ struct ScanFlowSheet: View {
   private var scanModeExplanation: String {
     if model.selectedScanTarget.kind == .system {
       return
-        "建議使用「App + 管理員掃描」。目前版本延續 0.7.1 的責任鏈修正，不再把獨立管理員子程序的 TCC 探針冒充為 App 權限；兩個責任鏈會分開記錄，受保護的使用者資料由 App 直接讀取後再合併。"
+        "建議選「App + 管理員掃描」：App 先讀取已獲授權的受保護資料，再由管理員權限掃描系統其他位置，最後合併結果。"
     }
-    return "目前目標會由 MacStorageLens App 直接掃描，沿用你在選擇器與完整磁碟存取中授予的權限。Terminal 模式只保留為進階比對工具。"
+    return "若要比對權限或診斷掃描問題，可使用 Terminal 掃描。Terminal 使用自己的存取權限。"
   }
 
+  @ViewBuilder
   private var running: some View {
+    if model.isTerminalScanRunning {
+      terminalRunning
+    } else {
+      integratedRunning
+    }
+  }
+
+  private var terminalRunning: some View {
+    VStack(alignment: .leading, spacing: 18) {
+      Label("正在等待 Terminal 的完成報告", systemImage: "terminal")
+        .font(.title3.weight(.semibold))
+      Text("掃描在 Terminal 中執行，請在該視窗查看進度。App 會等待完成報告，找到後自動載入容量地圖。")
+        .foregroundStyle(.secondary)
+      LensPanel(padding: 16, radius: 14) {
+        Text("App 無法停止 Terminal 中的掃描。要停止，請在 Terminal 視窗按 Control-C；App 也不會代為清除該次未完成報告。")
+          .font(.callout)
+          .fixedSize(horizontal: false, vertical: true)
+      }
+      Text("Terminal 使用自己的磁碟存取權；MacStorageLens 的授權不會自動套用。App 最多等待 30 分鐘，停止等待不會停止 Terminal 中的掃描。")
+        .font(.caption)
+        .foregroundStyle(.secondary)
+      Button("返回主畫面") { close() }
+        .buttonStyle(LensButtonStyle(kind: .secondary))
+        .help("關閉這個畫面，App 仍會繼續等待完成報告。")
+      Spacer(minLength: 0)
+    }
+    .padding(24)
+  }
+
+  private var integratedRunning: some View {
     let progress = model.scanProgress
 
     return VStack(spacing: 18) {
@@ -383,14 +407,14 @@ struct ScanFlowSheet: View {
           value: progress.estimatedRemainingSeconds.map(formatDuration) ?? "計算中",
           symbol: "hourglass")
         metricTile(
-          title: "最近心跳",
+          title: "最近回報",
           value: heartbeatValue(progress.secondsSinceUpdate, health: progress.health),
           symbol: "waveform.path.ecg")
         metricTile(
           title: "目錄節點", value: progress.nodeCount.map(formatInteger) ?? "—",
           symbol: "folder.fill")
         metricTile(
-          title: "受限／診斷行", value: progress.errorCount.map(formatInteger) ?? "—",
+          title: "無法讀取或警告", value: progress.errorCount.map(formatInteger) ?? "—",
           symbol: "shield.lefthalf.filled")
         metricTile(
           title: "目前步驟", value: stepValue(progress),
@@ -398,7 +422,7 @@ struct ScanFlowSheet: View {
       }
 
       if let warningCount = progress.errorCount, warningCount > 0 {
-        Text("這些通常是 macOS 拒絕讀取的個別路徑或系統警告；掃描器會把它們保留為 UNKNOWN_SIZE。數字增加不代表整體掃描失敗。")
+        Text("部分路徑可能因 macOS 權限限制而無法計算大小；這些項目會標為未知，不代表整次掃描失敗。")
           .font(.caption2)
           .foregroundStyle(.tertiary)
           .frame(maxWidth: .infinity, alignment: .leading)
@@ -413,7 +437,7 @@ struct ScanFlowSheet: View {
             )
             .foregroundStyle(progress.health == .stalled ? LensTheme.clay : LensTheme.sand)
             VStack(alignment: .leading, spacing: 3) {
-              Text(progress.health == .stalled ? "掃描心跳延遲" : "暫時沒有新回報")
+              Text(progress.health == .stalled ? "掃描回報延遲" : "暫時沒有新回報")
                 .font(.caption.weight(.semibold))
               Text(staleExplanation(progress.secondsSinceUpdate))
                 .font(.caption)
@@ -453,7 +477,7 @@ struct ScanFlowSheet: View {
 
       HStack(spacing: 12) {
         Label(
-          "目前只讀取檔案系統與 APFS metadata；沒有啟用任何清理動作。",
+          "目前只讀取磁碟與檔案資訊，不會清理任何資料。",
           systemImage: "shield.checkered"
         )
         .font(.caption)
@@ -471,8 +495,8 @@ struct ScanFlowSheet: View {
         .disabled(model.isLoadingReport || progress.health == .cancelling)
         .help(
           model.isLoadingReport
-            ? "掃描器已完成；App 正在解析完整報告並建立第一個容量地圖。"
-            : "安全停止目前的唯讀掃描"
+            ? "掃描器已完成；App 正在讀取報告並建立容量地圖。"
+            : "停止目前的唯讀掃描"
         )
       }
 
@@ -550,7 +574,7 @@ struct ScanFlowSheet: View {
         VStack(spacing: 6) {
           Text("掃描與容量地圖已完成")
             .font(.title2.weight(.semibold))
-          Text("最新報告已解析，第一個容量地圖也已建立；現在看到的是完整的使用者等待時間。")
+          Text("報告已儲存，容量地圖可在總覽查看。")
             .font(.callout)
             .foregroundStyle(.secondary)
             .multilineTextAlignment(.center)
@@ -562,7 +586,13 @@ struct ScanFlowSheet: View {
         }
 
         if let timing = timing(for: report) {
-          timingSummary(timing)
+          Text("本次掃描耗時 \(formatTiming(timing.requestToReadySeconds))（從開始掃描到容量地圖可用）")
+            .font(.callout)
+            .foregroundStyle(.secondary)
+          DisclosureGroup("查看詳細耗時與診斷", isExpanded: $showsTimingDetails) {
+            timingSummary(timing)
+              .padding(.top, 8)
+          }
         }
 
         HStack(spacing: 10) {
@@ -593,7 +623,7 @@ struct ScanFlowSheet: View {
           Label("本次耗時拆解", systemImage: "stopwatch.fill")
             .font(.headline)
           Spacer()
-          Text(timing.usedTerminalFallback ? "Terminal 相容模式" : "App 整合模式")
+          Text(timing.usedTerminalFallback ? "Terminal 掃描" : "App 掃描")
             .font(.caption2.weight(.semibold))
             .foregroundStyle(timing.usedTerminalFallback ? LensTheme.sand : LensTheme.sage)
             .padding(.horizontal, 8)
@@ -610,7 +640,7 @@ struct ScanFlowSheet: View {
           spacing: 9
         ) {
           timingMetric(
-            title: "端到端",
+            title: "開始至地圖可用",
             value: formatTiming(timing.requestToReadySeconds),
             symbol: "stopwatch.fill"
           )
@@ -681,7 +711,7 @@ struct ScanFlowSheet: View {
         }
 
         Text(
-          "端到端從你按下掃描開始，直到報告索引與第一個容量地圖可操作。首次載入會用單次 Markdown 遍歷建立索引；重新載入同一份未變更報告時，會直接讀取本機容量索引。"
+          "總耗時包含掃描、讀取報告與建立容量地圖；報告內的掃描器耗時只計掃描工作。"
         )
         .font(.caption2)
         .foregroundStyle(.secondary)
@@ -782,7 +812,7 @@ struct ScanFlowSheet: View {
           .frame(maxWidth: 510)
       }
       LensPanel(padding: 13, radius: 13) {
-        Text("你的既有完成報告仍然保留。失敗工作的進度與 log 會暫存最多 24 小時，方便查看真正的 shell 錯誤；長時間沒有進展時仍會安全中止。")
+        Text("上一份完成報告仍保留。App 執行的掃描若失敗，診斷資料會保留最多 24 小時。")
           .font(.caption)
           .foregroundStyle(.secondary)
           .frame(maxWidth: .infinity, alignment: .leading)
@@ -799,9 +829,10 @@ struct ScanFlowSheet: View {
         }
         Button("診斷資料") { model.openScanDiagnosticsFolder() }
           .buttonStyle(LensButtonStyle(kind: .quiet))
-        Button("Terminal 相容模式") { model.runFullScanInTerminal() }
+        Button("在 Terminal 重試") { model.runFullScanInTerminal() }
           .buttonStyle(LensButtonStyle(kind: .secondary))
-        Button("重新授權") { model.scanSheetPhase = .authorization }
+          .help("Terminal 使用自己的磁碟存取權限；App 的授權不會自動套用。")
+        Button("重新設定掃描") { model.scanSheetPhase = .authorization }
           .buttonStyle(LensButtonStyle(kind: .primary))
           .keyboardShortcut(.defaultAction)
       }
@@ -858,9 +889,9 @@ struct ScanFlowSheet: View {
   private func staleExplanation(_ seconds: Int?) -> String {
     let value = seconds ?? 0
     if value >= 60 {
-      return "已經 \(value) 秒沒有收到核心掃描輸出。若達 120 秒，掃描監督器會終止本次工作並移除未完成報告。"
+      return "已經 \(value) 秒沒有收到掃描回報。若達 120 秒，掃描會停止並移除未完成報告。"
     }
-    return "已經 \(value) 秒沒有新的核心輸出。大型目錄或 APFS 查詢可能短暫延遲；App 仍在監看程序與心跳檔。"
+    return "已經 \(value) 秒沒有新的掃描回報。大型資料夾或磁碟查詢可能暫時沒有進展；App 仍會持續監看。"
   }
 
   private func formatDuration(_ seconds: Int) -> String {

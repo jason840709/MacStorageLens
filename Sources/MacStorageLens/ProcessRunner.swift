@@ -19,12 +19,14 @@ enum ProcessRunnerError: LocalizedError {
   case launchFailed(String)
   case timedOut(String)
   case outputDrainTimedOut(String)
+  case cancelled(String)
 
   var errorDescription: String? {
     switch self {
     case .launchFailed(let message): return message
     case .timedOut(let command): return "命令逾時：\(command)"
-    case .outputDrainTimedOut(let command): return "命令已結束，但輸出管線未能安全收尾：\(command)"
+    case .cancelled(let command): return "已停止命令：\(command)"
+    case .outputDrainTimedOut(let command): return "命令已結束，但未能讀完輸出：\(command)"
     }
   }
 }
@@ -47,7 +49,10 @@ private final class ProcessDataBox: @unchecked Sendable {
 }
 
 enum ProcessRunner {
-  static func run(_ executable: String, _ arguments: [String] = [], timeout: TimeInterval = 30)
+  static func run(
+    _ executable: String, _ arguments: [String] = [], timeout: TimeInterval = 30,
+    cancellationCheck: (() -> Bool)? = nil
+  )
     throws -> ProcessResult
   {
     let command = ([executable] + arguments).joined(separator: " ")
@@ -88,14 +93,24 @@ enum ProcessRunner {
       exited.signal()
     }
 
-    if exited.wait(timeout: .now() + timeout) == .timedOut {
-      process.terminate()
-      if exited.wait(timeout: .now() + 2) == .timedOut, process.isRunning {
-        kill(process.processIdentifier, SIGKILL)
-        _ = exited.wait(timeout: .now() + 5)
+    let deadline = Date().addingTimeInterval(timeout)
+    var stopped = false
+    var timedOut = false
+    while exited.wait(timeout: .now() + 0.1) == .timedOut {
+      stopped = cancellationCheck?() == true
+      timedOut = Date() >= deadline
+      if stopped || timedOut {
+        // Only this invocation's child is signalled; other scans/builds are not
+        // process-name matched or terminated.
+        process.terminate()
+        if exited.wait(timeout: .now() + 2) == .timedOut, process.isRunning {
+          kill(process.processIdentifier, SIGKILL)
+          _ = exited.wait(timeout: .now() + 5)
+        }
+        _ = readers.wait(timeout: .now() + 5)
+        if stopped { throw ProcessRunnerError.cancelled(command) }
+        throw ProcessRunnerError.timedOut(command)
       }
-      _ = readers.wait(timeout: .now() + 5)
-      throw ProcessRunnerError.timedOut(command)
     }
 
     guard readers.wait(timeout: .now() + 10) == .success else {

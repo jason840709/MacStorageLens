@@ -285,7 +285,7 @@ final class FolderCleanupEngine {
     }
     if appleDoubleTally.total > 0 {
       notices.append(
-        "已檢查 \(appleDoubleTally.total.formatted()) 個 ._ 檔：Finder／Windows 伴隨 \(appleDoubleTally.finderCompanions + appleDoubleTally.windowsCompanions)、孤立 metadata \(appleDoubleTally.orphanedMetadataOnly)、配對 metadata \(appleDoubleTally.pairedMetadataOnly)、敏感內容 \(appleDoubleTally.sensitive)、無法驗證 \(appleDoubleTally.unrecognized)。"
+        "已檢查 \(appleDoubleTally.total.formatted()) 個 ._ 側邊檔：Finder／Windows 顯示資料 \(appleDoubleTally.finderCompanions + appleDoubleTally.windowsCompanions)、主檔已不存在 \(appleDoubleTally.orphanedMetadataOnly)、主檔仍存在 \(appleDoubleTally.pairedMetadataOnly)、含重要內容 \(appleDoubleTally.sensitive)、無法驗證 \(appleDoubleTally.unrecognized)。"
       )
     }
     if skippedServerRecycleDirectories > 0 {
@@ -295,7 +295,7 @@ final class FolderCleanupEngine {
     }
     if prioritizesExternalAppleDouble {
       notices.append(
-        "目前目標屬於非本機儲存：已提高可驗證 metadata-only AppleDouble 的清理優先級；resource fork、未知 entry、package／symlink companion 與格式不明 ._ 項目仍只供檢視。"
+        "此位置會較早列出已驗證、不含資源分支的 ._ 側邊檔；含資源分支、未知內容或格式不明的檔案只供檢視。"
       )
     }
     notices.append("已檢查 \(visited.formatted()) 個檔案系統項目；符號連結、App 套件與受保護目錄不會跟隨。")
@@ -589,24 +589,24 @@ final class FolderCleanupEngine {
     }
     if appleDoubleTally.total > 0 {
       notices.append(
-        "已即時驗證 \(appleDoubleTally.total.formatted()) 個 ._ 檔；AppleDouble 判定沒有直接相信容量報告。"
+        "已依目前檔案狀態檢查 \(appleDoubleTally.total.formatted()) 個 ._ 側邊檔。"
       )
     }
     notices.append(
-      "快速模式使用既有容量報告的 \(reportDirectoryCount.formatted()) 個資料夾節點作為走訪索引；已核對 \(visitedDirectories.formatted()) 個仍存在的資料夾，只有 \(candidateEntriesInspected.formatted()) 個命名命中項目進一步讀取 metadata。低風險等級會直接探測已知檔名，不列出整個資料夾；需要搜尋任意 ._ AppleDouble 時才讀取第一層名稱。"
+      "快速模式沿用容量報告中的 \(reportDirectoryCount.formatted()) 個資料夾位置；其中 \(visitedDirectories.formatted()) 個仍可讀取，並檢查了 \(candidateEntriesInspected.formatted()) 個符合名稱的項目。"
     )
     if skippedServerRecycleDirectories > 0 {
       notices.append(
-        "已從容量報告導航中略過 \(skippedServerRecycleDirectories) 個遠端 #recycle 伺服器回收區；不會對其內容發出 SMB 目錄列舉或清理候選查詢。"
+        "已略過 \(skippedServerRecycleDirectories) 個 NAS 伺服器回收區；這些位置由伺服器管理。"
       )
     }
     if prioritizesExternalAppleDouble {
       notices.append(
-        "目前目標屬於非本機儲存：metadata-only AppleDouble 會提早出現在較低清理等級；敏感 payload 的安全紅線不變。"
+        "此位置會較早列出已驗證、不含資源分支的 ._ 側邊檔；含重要內容的檔案只供檢視。"
       )
     }
     notices.append(
-      "容量報告不包含每個普通檔案，因此它只作為導航索引；所有候選仍以目前檔案系統狀態驗證，執行刪除前也會再次重驗證。新增但不在報告中的整個新資料夾不會由快速模式主動發現。"
+      "快速模式可能漏掉容量報告建立後新增的整個資料夾；若有新增，請完整重新掃描。候選仍會依目前檔案狀態驗證。"
     )
 
     progress?(
@@ -820,7 +820,7 @@ final class FolderCleanupEngine {
       notices.append("另有 \(diagnostics - notices.count) 筆增量刷新診斷未逐一列出。")
     }
     notices.append(
-      "本次只刷新 \(inspectedDirectories.formatted()) 個受清理影響的資料夾，檢查 \(inspectedEntries.formatted()) 個命名候選；沒有重新遞迴整個目標。"
+      "已重新檢查 \(inspectedDirectories.formatted()) 個受清理影響的資料夾，其中 \(inspectedEntries.formatted()) 個項目符合掃描名稱。"
     )
 
     return CleanupScanResult(
@@ -1342,9 +1342,9 @@ final class FolderCleanupEngine {
           .moveMatchedItemsToTrash,
           "._.DS_Store 側邊檔",
           .minimal,
-          "binary header 已驗證為 AppleDouble，而且同名主檔是 .DS_Store；它只伴隨 Finder 顯示中繼資料。",
+          "已確認這是 .DS_Store 的 AppleDouble 側邊檔，只保存 Finder 顯示資訊。",
           "Finder 的資料夾檢視、排序或圖示位置可能回到預設值。",
-          "Finder 需要時會重新建立 .DS_Store 與相關顯示 metadata。"
+          "Finder 需要時會重新建立顯示資訊。"
         ),
         (
           .folderWindowsMetadata,
@@ -1364,10 +1364,10 @@ final class FolderCleanupEngine {
           .conservative,
           .folderWindowsMetadata,
           .moveMatchedItemsToTrash,
-          "Windows metadata 的 ._ 側邊檔",
+          "Windows 顯示資料的 ._ 側邊檔",
           .low,
-          "binary header 已驗證為 AppleDouble，而且同名主檔是 Thumbs.db、ehthumbs.db 或 Desktop.ini。",
-          "只會移除 Windows 顯示中繼資料的 Mac 伴隨 metadata；主要文件不受影響。",
+          "已確認這是 Windows 縮圖或資料夾外觀檔案的 AppleDouble 側邊檔。",
+          "只移除側邊檔；主要文件不受影響。",
           "Windows 或 Finder 需要時可重新建立對應的顯示資料。"
         ),
         (
@@ -1379,8 +1379,8 @@ final class FolderCleanupEngine {
           "__MACOSX 封裝資料夾",
           .moderate,
           "macOS 壓縮工具常用這個伴隨資料夾保存 Finder 標籤、註解、資源分支或自訂圖示。",
-          "主要檔案保留，但部分 Finder metadata 或舊式資源分支可能消失。",
-          "若仍有原始 Mac 檔案，可重新壓縮產生；否則遺失的 metadata 未必能重建。"
+          "主要檔案保留，但部分 Finder 標籤、註解或舊式資源分支可能消失。",
+          "若仍有原始 Mac 檔案，可重新壓縮產生；否則遺失的 Mac 專用資訊未必能重建。"
         ),
         (
           .folderOrphanedAppleDoubleSidecar,
@@ -1390,10 +1390,8 @@ final class FolderCleanupEngine {
           .moveMatchedItemsToTrash,
           "孤立的 ._ AppleDouble",
           orphanedAppleDoubleRisk,
-          prioritizesExternalAppleDouble
-            ? "格式與 entry table 均有效、主檔已不存在，且沒有資源分支或未知 entry；在非本機儲存上屬於高價值殘留清理。"
-            : "格式與 entry table 均有效，但同名主檔已不存在，而且側邊檔沒有資源分支或未知 entry。",
-          "只會移除已失去主檔的 Finder／延伸屬性殘留，不會移除任何可見主檔。",
+          "同名主檔已不存在；已驗證側邊檔不含資源分支或未知內容。",
+          "只移除這個側邊檔，不影響其他可見檔案。",
           targetCapabilities.isRemote
             ? "遠端卷宗不經 Finder 垃圾桶；NAS 端是否保留於伺服器回收筒／快照由伺服器政策決定。"
             : "項目可移到 Finder 可見垃圾桶；需要時可在清空 Finder 垃圾桶前還原。"
@@ -1404,15 +1402,13 @@ final class FolderCleanupEngine {
           pairedAppleDoubleTier,
           .folderAppleDouble,
           .moveMatchedItemsToTrash,
-          "配對中的 ._ metadata",
+          "主檔仍存在的 ._ 側邊檔",
           pairedAppleDoubleRisk,
+          "同名主檔仍存在；側邊檔不含資源分支或未知內容，但可能保存 Finder 標籤等資訊。",
+          "主檔內容會保留，但 Finder 標籤、自訂圖示、隔離屬性或其他 Mac 專用資訊可能消失。",
           prioritizesExternalAppleDouble
-            ? "同名主檔仍存在，且 AppleDouble 已證明沒有資源分支或未知 entry；非本機儲存上會提高這類 sidecar 的清理優先級。"
-            : "同名主檔仍存在，而且 AppleDouble 沒有資源分支或未知 entry；但它仍可能保存 Finder 資訊、標籤與延伸屬性。",
-          "主檔內容會保留，但 Finder 標籤、自訂圖示、隔離屬性或其他 Mac metadata 可能消失。",
-          prioritizesExternalAppleDouble
-            ? "若這個外部媒體仍需要保留 Mac 專屬 Finder metadata，請先備份；真正含 resource fork 或未知 payload 的 sidecar 不會進入此可刪除類別。"
-            : "優先考慮在 Mac 上以 dot_clean 合併；直接移除後部分 metadata 未必能重建。"
+            ? "若需保留 Mac 專用資訊，請先備份；直接移除後部分資訊未必能重建。"
+            : "可先在 Mac 上以 dot_clean 合併側邊檔；直接移除後部分資訊未必能重建。"
         ),
         (
           .folderSensitiveAppleDoubleSidecar,
@@ -1422,8 +1418,8 @@ final class FolderCleanupEngine {
           .reviewOnly,
           "含敏感內容的 ._ AppleDouble",
           .reviewOnly,
-          "側邊檔含非空資源分支、未知／應用程式自訂 entry，或配對的是 package、符號連結、macOS 管理項目。",
-          "直接刪除可能讓舊式文件、字型、圖示、App 資源或唯一殘留的 Mac metadata 永久失效。",
+          "側邊檔含資源分支、未知或 App 自訂內容，或對應到 App 套件、符號連結、macOS 管理項目。",
+          "直接刪除可能使舊式文件、字型、圖示、App 資源或唯一殘留的 Mac 專用資訊永久失效。",
           "MacStorageLens 不直接清理；請先備份，再以 dot_clean 或原始 App 驗證。"
         ),
         (
@@ -1434,9 +1430,9 @@ final class FolderCleanupEngine {
           .reviewOnly,
           "無法驗證的 ._ 檔案",
           .reviewOnly,
-          "檔名像 AppleDouble，但 magic、版本、entry table 或資料範圍未通過驗證。",
-          "它可能是普通使用者檔案、損壞 metadata 或未知格式；不能只憑 ._ 前綴判定為垃圾。",
-          "先在 Finder 或十六進位工具確認來源；MacStorageLens 不提供直接清理。"
+          "檔名以 ._ 開頭，但無法確認是有效的 AppleDouble 側邊檔。",
+          "可能是一般檔案、損壞的 Mac 專用資訊或未知格式。",
+          "請先確認檔案來源；此類項目不提供直接清理。"
         ),
         (
           .folderSpotlightMetadata,
@@ -1446,9 +1442,9 @@ final class FolderCleanupEngine {
           .moveMatchedItemsToTrash,
           "Spotlight 索引",
           .high,
-          ".Spotlight-V100 是這個卷宗的 Spotlight 搜尋索引。對只在手機、相機或 Windows 使用的外接媒體，它通常不是主要內容，但不是一般無風險垃圾。",
-          "『移到 Finder 可見垃圾桶』會先改成非點號可見名稱，再交給 Finder 語意的系統回收操作；清空 Finder 垃圾桶前仍占用原卷宗空間。『直接徹底刪除』則直接移除精確來源，不經任何垃圾桶。macOS 仍可能建立新的同名索引。",
-          "兩種方式都必須逐項手動選取。可逆方式完成後，App 只在驗證到 Finder 可見目的地時回報成功；需要立即釋放容量時才使用直接徹底刪除。"
+          ".Spotlight-V100 保存這個磁碟的 Spotlight 搜尋索引。",
+          "移除後，這個磁碟的搜尋可能暫時變慢；macOS 之後可能重建索引。移到 Finder 垃圾桶後，清空前仍占用原磁碟空間。",
+          "需逐項選取。可選直接永久刪除，不經垃圾桶；此動作無法從 Finder 還原，實際可用空間仍受系統快照等因素影響。"
         ),
         (
           .folderFSEventsMetadata,
@@ -1458,9 +1454,9 @@ final class FolderCleanupEngine {
           .moveMatchedItemsToTrash,
           "FSEvents 事件紀錄",
           .high,
-          ".fseventsd 保存卷宗的檔案系統事件歷史，備份與同步工具可能依賴它判斷變更。",
-          "『移到 Finder 可見垃圾桶』會建立可在 Finder 垃圾桶中辨識的非隱藏名稱；清空前仍占用原卷宗空間。『直接徹底刪除』直接移除精確來源，不經垃圾桶，也不建立任何 no_log 或其他隱藏標記。備份與同步工具可能需要重新完整掃描。",
-          "只有不需要 Mac 增量事件歷史、且位於 /Volumes 根層的外接卷宗，才可逐項執行；macOS 之後仍可能重新建立新的 .fseventsd。"
+          ".fseventsd 保存這個磁碟的檔案變更紀錄；備份與同步工具可能依靠它判斷哪些檔案變了。",
+          "刪除後，備份或同步工具可能需要完整重新掃描；macOS 之後可能重建新的紀錄。",
+          "只有確定不再需要舊變更紀錄時才逐項選取。直接永久刪除無法從 Finder 還原。"
         ),
         (
           .folderLegacySpotlightTrashResidue,
@@ -1470,9 +1466,9 @@ final class FolderCleanupEngine {
           .permanentDeleteMatchedItems,
           "舊版隱藏垃圾桶中的 Spotlight 殘留",
           .high,
-          "這是舊版曾移入外接卷宗 .Trashes、但 Finder 可能不顯示的點號 Spotlight 副本；它仍占用卷宗容量。",
-          "只能直接徹底刪除；不會再移入另一個垃圾桶，也不會碰 .Trashes 中其他任何項目。",
-          "逐項核對路徑後使用『直接徹底刪除』，再重新掃描卷宗容量。"
+          "這是舊版移入外接磁碟垃圾桶的 Spotlight 索引副本；Finder 可能不顯示，但仍占空間。",
+          "只能直接永久刪除，無法從 Finder 還原；不會刪除垃圾桶中的其他項目。",
+          "先核對路徑，再逐項刪除。"
         ),
         (
           .folderLegacyFSEventsTrashResidue,
@@ -1482,9 +1478,9 @@ final class FolderCleanupEngine {
           .permanentDeleteMatchedItems,
           "舊版隱藏垃圾桶中的 FSEvents 殘留",
           .high,
-          "這是舊版曾移入外接卷宗 .Trashes、但 Finder 可能不顯示的點號 FSEvents 副本；它仍占用卷宗容量。",
-          "只能直接徹底刪除；不會再移入另一個垃圾桶，也不會建立 no_log。",
-          "逐項核對路徑後使用『直接徹底刪除』，再重新掃描卷宗容量。"
+          "這是舊版移入外接磁碟垃圾桶的檔案變更紀錄副本；Finder 可能不顯示，但仍占空間。",
+          "只能直接永久刪除，無法從 Finder 還原。",
+          "先核對路徑，再逐項刪除。"
         ),
         (
           .folderTrashMetadata,
@@ -1504,9 +1500,9 @@ final class FolderCleanupEngine {
           .ultraAggressive,
           .folderMacManagedReview,
           .reviewOnly,
-          "macOS 卷宗 marker／暫存資料",
+          "macOS 磁碟功能標記與暫存資料",
           .reviewOnly,
-          "包含 .TemporaryItems、.DocumentRevisions-V100、.VolumeIcon.icns、Spotlight／Time Machine marker 等功能性資料。",
+          "包含 .TemporaryItems、.DocumentRevisions-V100、.VolumeIcon.icns、Spotlight／Time Machine 功能標記等資料。",
           "刪除可能影響進行中的暫存工作、文件版本、自訂磁碟圖示、索引或備份行為。",
           "只提供辨識與說明；需要處理時應使用對應的 macOS 功能。"
         ),
@@ -1516,10 +1512,10 @@ final class FolderCleanupEngine {
           .ultraAggressive,
           .folderLegacyReview,
           .reviewOnly,
-          "舊式 Apple metadata 目錄",
+          "舊式檔案服務的 Mac 專用資料夾",
           .reviewOnly,
           ".AppleDouble、.AppleDB 與 .AppleDesktop 可能由舊式 AFP／Netatalk 或跨平台檔案服務建立。",
-          "用途依伺服器與檔案服務而異；直接清除可能破壞舊式 metadata 對照。",
+          "用途依伺服器與檔案服務而異；直接清除可能使檔案與 Mac 專用資訊失去對應。",
           "先確認來源服務與備份；MacStorageLens 不提供直接清理。"
         ),
       ]

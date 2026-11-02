@@ -45,7 +45,7 @@ struct ContentView: View {
           .help("重新載入目前顯示的報告；尚無報告時載入最新一份")
           .lensHoverHelp(
             title: "重新載入目前報告",
-            detail: "重新解析目前顯示的 Markdown；不會開始掃描，也不會改變下次掃描位置。",
+            detail: "重新讀取目前報告，不會重新掃描。",
             tint: LensTheme.sage,
             placement: .belowTrailing
           )
@@ -57,15 +57,15 @@ struct ContentView: View {
           } label: {
             Label("匯入報告", systemImage: "square.and.arrow.down")
           }
-          .help("匯入既有的 MacStorageLens Markdown 掃描報告；原始檔不會被修改")
+          .help("匯入先前的掃描報告；原始檔保持不變")
           .lensHoverHelp(
             title: "匯入掃描報告",
-            detail: "從 Finder 選擇既有 Markdown。App 只保存自己的副本，原始檔不會被修改。",
+            detail: "選擇先前的掃描報告；App 會保存副本，原始檔保持不變。",
             tint: LensTheme.plum,
             placement: .belowTrailing
           )
           .accessibilityLabel("匯入掃描報告")
-          .accessibilityHint("從 Finder 選擇既有的 Markdown 報告")
+          .accessibilityHint("選擇先前的掃描報告")
         }
       }
     }
@@ -155,7 +155,10 @@ private struct LensSidebar: View {
       Button {
         model.destination = .overview
       } label: {
-        SidebarCapacityCard(capacity: model.liveCapacity)
+        SidebarCapacityCard(
+          capacity: model.displayedLiveCapacity,
+          target: model.document?.summary.target ?? model.selectedScanTarget
+        )
       }
       .buttonStyle(SidebarPressButtonStyle())
       .help("前往儲存空間總覽")
@@ -235,6 +238,7 @@ private struct SidebarPressButtonStyle: ButtonStyle {
 
 private struct SidebarCapacityCard: View {
   let capacity: LiveCapacity?
+  let target: ScanTarget
 
   @Environment(\.colorScheme) private var colorScheme
   @LensState private var hovered = false
@@ -242,7 +246,7 @@ private struct SidebarCapacityCard: View {
   var body: some View {
     VStack(alignment: .leading, spacing: 10) {
       HStack {
-        Label("即時容量", systemImage: "internaldrive.fill")
+        Label("磁碟即時容量", systemImage: "internaldrive.fill")
           .font(.caption.weight(.semibold))
           .foregroundStyle(.secondary)
         Spacer()
@@ -255,6 +259,13 @@ private struct SidebarCapacityCard: View {
           .font(.caption2.weight(.bold))
           .foregroundStyle(hovered ? LensTheme.accentSoft : Color.secondary.opacity(0.42))
       }
+
+      Text(target.kind == .folder ? "「\(target.displayName)」所在磁碟" : target.displayName)
+        .font(.caption2)
+        .foregroundStyle(.secondary)
+        .lineLimit(1)
+        .truncationMode(.middle)
+        .help(target.path)
 
       if let capacity {
         GeometryReader { proxy in
@@ -310,6 +321,7 @@ private struct SidebarCapacityCard: View {
 
   private func percentText(_ capacity: LiveCapacity) -> String {
     guard capacity.totalBytes > 0 else { return "—" }
-    return String(format: "%.0f%%", Double(capacity.usedBytes) / Double(capacity.totalBytes) * 100)
+    return String(
+      format: "%.0f%% 已用", Double(capacity.usedBytes) / Double(capacity.totalBytes) * 100)
   }
 }

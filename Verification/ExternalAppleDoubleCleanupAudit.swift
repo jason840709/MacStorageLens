@@ -89,7 +89,9 @@ struct ExternalAppleDoubleCleanupAudit {
         && candidate(.folderUnrecognizedDotUnderscore, in: ultraAggressive)?.isSelectable == false)
     check(
       "external_notice_explains_priority_without_weakening_red_line",
-      balanced.notices.contains { $0.contains("AppleDouble") && $0.contains("resource fork") })
+      balanced.notices.contains {
+        $0.contains("._") && $0.contains("資源分支") && $0.contains("只供檢視")
+      })
 
     let internalCapabilities = capabilities(
       filesystemType: "apfs", isRemote: false, isInternalStorage: true)

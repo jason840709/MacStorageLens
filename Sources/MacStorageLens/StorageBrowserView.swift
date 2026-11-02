@@ -6,9 +6,7 @@ struct StorageBrowserView: View {
   var body: some View {
     VStack(alignment: .leading, spacing: 16) {
       LensPageHeader(
-        eyebrow: "路徑瀏覽",
-        title: "資料樹",
-        subtitle: "從 Data volume 或其他掃描根節點逐層深入；圖表與清單使用同一份報告索引。"
+        title: "資料樹"
       ) {
         HStack(spacing: 8) {
           Button {
@@ -22,7 +20,7 @@ struct StorageBrowserView: View {
           Button {
             model.openInFinder(model.currentPath)
           } label: {
-            Label("Finder 顯示", systemImage: "finder")
+            Label("在 Finder 中顯示", systemImage: "finder")
           }
           .buttonStyle(LensButtonStyle(kind: .secondary))
         }
@@ -128,7 +126,7 @@ private struct BrowserBreadcrumbBar: View {
   }
 
   private func rootLabel(_ root: String) -> String {
-    if root == "/System/Volumes/Data" { return "Data" }
+    if root == "/System/Volumes/Data" { return "資料卷（Data）" }
     let name = URL(fileURLWithPath: root).lastPathComponent
     return name.isEmpty ? root : name
   }
@@ -146,8 +144,8 @@ private struct BrowserChildrenPanel: View {
               .font(.headline)
             Text(
               model.isShowingAggregateFocus
-                ? "這些子資料夾原本因同層項目極多而收在其他項目；此處完整列出，可逐項深入"
-                : "直接檔案與子資料夾，依配置區塊用量排列"
+                ? "原先合併的子資料夾，依占用空間排列"
+                : "依占用空間由大到小排列"
             )
             .font(.caption)
             .foregroundStyle(.secondary)
@@ -166,9 +164,9 @@ private struct BrowserChildrenPanel: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else if model.children.isEmpty && model.currentDirectFilesItem == nil {
           ContentUnavailableView {
-            Label("沒有子資料夾", systemImage: "folder")
+            Label("報告未列出子資料夾", systemImage: "folder")
           } description: {
-            Text("此節點沒有可讀取的直接子資料夾，或其內容低於報告的可見範圍。")
+            Text("這份報告沒有列出此處的子資料夾；部分內容可能因讀取限制或報告門檻而未列出。")
           }
           .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else {
@@ -242,7 +240,7 @@ private struct DirectFilesNodeRow: View {
 
       VStack(alignment: .leading, spacing: 5) {
         HStack(alignment: .firstTextBaseline) {
-          Text("直接檔案")
+          Text("直接檔案估計")
             .font(.callout.weight(.medium))
           Spacer()
           Text(item.bytes.formattedBytes)
@@ -250,7 +248,7 @@ private struct DirectFilesNodeRow: View {
             .monospacedDigit()
             .foregroundStyle(.secondary)
         }
-        Text("直接位於目前資料夾；點一下列出檔名與完整路徑")
+        Text("點一下列出目前資料夾第一層的檔案")
           .font(.caption2)
           .foregroundStyle(.tertiary)
           .lineLimit(1)
@@ -366,8 +364,8 @@ private struct BrowserChartPanel: View {
               .font(.headline)
             Text(
               model.isShowingAggregateFocus
-                ? "已展開原本合併的所有子項；點擊任一扇區可繼續深入，上一層可返回原本容量地圖"
-                : "第一層子項各自使用支系色；同一分支往外保持色相並以更明顯的明度階差呈現深度。點擊深入，右鍵可在 Finder 操作"
+                ? "點一下進入子資料夾；按「上一層」返回"
+                : "同色扇區屬於同一分支，越外圈代表越深的資料夾。點一下資料夾進入，按右鍵開啟 Finder 選單"
             )
             .font(.caption)
             .foregroundStyle(.secondary)

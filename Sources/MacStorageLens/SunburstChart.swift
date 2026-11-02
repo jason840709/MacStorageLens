@@ -323,7 +323,7 @@ struct SunburstChart: View {
           .tracking(-0.35)
           .monospacedDigit()
 
-        Text(item.label)
+        Text(item.storageDisplayLabel)
           .font(.caption.weight(.medium))
           .lineLimit(2)
           .multilineTextAlignment(.center)
@@ -333,7 +333,7 @@ struct SunburstChart: View {
           Text(
             item.kind == .directFiles
               ? "點一下檢視檔案"
-              : (item.kind == .otherChildren ? "點一下展開" : "點一下深入")
+              : (item.kind == .otherChildren ? "點一下展開" : "點一下進入資料夾")
           )
           .font(.caption2.weight(.semibold))
           .foregroundStyle(LensTheme.accentSoft)
@@ -552,12 +552,14 @@ private struct SunburstHoverCard: View {
           .background(LensTheme.accent.opacity(0.13), in: RoundedRectangle(cornerRadius: 8))
 
         VStack(alignment: .leading, spacing: 1) {
-          Text(item.label)
+          Text(item.storageDisplayLabel)
             .font(.headline)
             .lineLimit(1)
-          Text(interactionHint)
-            .font(.caption2)
-            .foregroundStyle(.secondary)
+          if let interactionHint {
+            Text(interactionHint)
+              .font(.caption2)
+              .foregroundStyle(.secondary)
+          }
         }
       }
 
@@ -595,12 +597,12 @@ private struct SunburstHoverCard: View {
     .shadow(color: LensTheme.shadow(colorScheme), radius: 18, y: 8)
   }
 
-  private var interactionHint: String {
+  private var interactionHint: String? {
     if item.kind == .otherChildren {
       return "點一下展開完整項目 · 右鍵可顯示父資料夾"
     }
     if item.isNavigable {
-      return "點一下深入 · 右鍵可在 Finder 顯示"
+      return "點一下進入資料夾 · 右鍵可在 Finder 顯示"
     }
     if item.kind == .directFiles {
       return "點一下列出檔案 · 右鍵可顯示父資料夾"
@@ -608,13 +610,13 @@ private struct SunburstHoverCard: View {
     if item.finderPath != nil {
       return "右鍵可在 Finder 顯示"
     }
-    return "帳務或合併節點"
+    return nil
   }
 
   private var percentageText: String {
     guard rootBytes > 0 else { return "—" }
     let percentage = Double(item.bytes) / Double(rootBytes) * 100
-    return String(format: "%.1f%%", percentage)
+    return String(format: "占目前圖表總量 %.1f%%", percentage)
   }
 
   private var symbol: String {
@@ -633,30 +635,41 @@ private struct SunburstHoverCard: View {
 
   private var pathDescription: String {
     if item.kind == .directFiles, let path = item.path {
-      return "直接位於：\(path)"
+      return "資料夾占用扣除已列出子資料夾後的差額估計，可能包含其他占用。檔案位置：\(path)"
     }
     if let path = item.path { return path }
     switch item.kind {
     case .accountingGap:
       return item.label.contains("卷宗中繼資料")
-        ? "沒有單一 Finder 路徑（卷宗垃圾桶／Spotlight／FSEvents 等未展開帳務）"
-        : "沒有單一 Finder 路徑（不可讀／快照／APFS 帳務差額）"
+        ? "未展開的磁碟垃圾桶、搜尋索引、檔案變更紀錄與其他容量差額，沒有單一資料夾路徑"
+        : "未能對應到路徑的已用容量，可能包含無法讀取的資料、快照或檔案系統資料"
     case .containerAccounting:
-      return "沒有單一 Finder 路徑（APFS 容器 metadata／帳務）"
+      return "APFS 檔案系統記錄的其他用量，沒有單一資料夾路徑"
     case .scanDelta:
-      return "不同取樣時點造成的容量變化；不是可直接清理的路徑"
+      return "掃描前後已用容量的變化，沒有對應的固定檔案"
     case .freeSpace:
-      return "沒有檔案路徑（真正空閒空間）"
+      return "掃描時未配置給檔案的空間"
     case .purgeable:
-      return "沒有固定路徑（macOS 可回收容量估計）"
+      return "macOS 估算可在需要時回收的容量，不等於可直接刪除的檔案"
     case .otherVolume:
-      return "獨立 APFS 卷或容器帳務項目"
+      return "另一個 APFS 卷或檔案系統本身的用量"
     case .directFiles:
-      return "此資料夾內未歸入子資料夾的檔案"
+      return "資料夾總占用扣除已列出子資料夾後的差額，可能包含未列出的資料與資料夾本身的占用"
     case .otherChildren:
-      return "僅在同層項目極多時合併；點一下可展開完整清單"
+      return "多個子資料夾的合計"
     case .none:
       return "沒有一般檔案路徑"
     }
+  }
+}
+
+// Presentation wording only; report labels remain unchanged for accounting decisions.
+extension SunburstItem {
+  var storageDisplayLabel: String {
+    if kind == .directFiles { return "直接檔案估計" }
+    if kind == .accountingGap, label.contains("卷宗中繼資料") {
+      return "未展開的系統資料與容量差額"
+    }
+    return label
   }
 }

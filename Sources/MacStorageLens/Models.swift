@@ -353,8 +353,8 @@ struct ScanSummary: Hashable, Codable {
 
   var scanChannelDisplayName: String {
     switch scannerPrivilegeChannel {
-    case "app_tcc_overlay_plus_administrator": return "App TCC + 管理員"
-    case "app_direct": return "App 直接"
+    case "app_tcc_overlay_plus_administrator": return "App 與管理員授權"
+    case "app_direct": return "App 掃描"
     case "administrator_only": return "管理員子程序"
     case "terminal": return "Terminal"
     default:
@@ -427,14 +427,14 @@ enum ReportPresentationIndexSource: String, Codable, Hashable {
   var title: String {
     switch self {
     case .persistentCache: return "本機容量索引"
-    case .markdownSinglePass: return "Markdown 單次建立"
+    case .markdownSinglePass: return "從掃描報告建立"
     }
   }
 
   var compactTitle: String {
     switch self {
     case .persistentCache: return "索引快取"
-    case .markdownSinglePass: return "單次解析"
+    case .markdownSinglePass: return "讀取掃描報告"
     }
   }
 }
@@ -821,15 +821,15 @@ enum CleanupProfile: String, CaseIterable, Identifiable, Codable {
   var summary: String {
     switch self {
     case .ultraConservative:
-      return "只找第三方標準快取；不碰 Apple 服務、App Support、日誌或個人資料。"
+      return "掃描第三方 App 的標準快取；清除後可能需要重新下載資料。"
     case .conservative:
-      return "加入 Apple／群組容器快取、跨裝置剪貼簿、純繪圖快取與已停滯的未完成下載。"
+      return "加入 Apple 與共用 App 快取、繪圖快取、跨裝置剪貼簿暫存，以及停滯的下載檔。"
     case .balanced:
-      return "再加入開發工具、套件下載快取與受支援的 Conda／Homebrew 清理。"
+      return "再加入開發工具與套件快取，以及 Conda／Homebrew 清理；之後建置或安裝可能需重新下載。"
     case .aggressive:
-      return "再顯示離線網頁快取、使用者診斷日誌、已卸載 App 的可重建殘留與可證明損壞的第三方 plist。"
+      return "再顯示離線網頁內容、診斷日誌、已卸載 App 的殘留，以及格式損壞、無法解析的第三方偏好設定；清除診斷後無法回看舊紀錄。"
     case .ultraAggressive:
-      return "再檢查舊安裝檔與磁碟映像；高影響資料、目前使用者垃圾桶與系統管理檢視項目必須在下方另外開啟。"
+      return "再檢查舊安裝檔與磁碟映像。備份、垃圾桶及系統管理項目需另外開啟。"
     case .custom:
       return "自行選擇要檢查的資料類型與最低容量；所有結果仍需逐項勾選。"
     }
@@ -843,31 +843,31 @@ enum CleanupProfile: String, CaseIterable, Identifiable, Codable {
     if prioritizingExternalAppleDouble {
       switch self {
       case .ultraConservative:
-        return "只找 .DS_Store 與可驗證的 ._.DS_Store；清除後只會重設 Finder 顯示偏好。"
+        return "只找 Finder 顯示資訊；清除後排序、檢視方式或圖示位置可能重設。"
       case .conservative:
-        return "加入 Windows 顯示中繼資料，以及主檔已不存在且不含資源分支／未知 entry 的 ._ 孤立殘留。"
+        return "加入 Windows 顯示資訊，以及主檔已不存在、不含資源分支或未知內容的 ._ 側邊檔。"
       case .balanced:
-        return "再加入 __MACOSX，以及仍有同名主檔但不含資源分支／未知 entry 的 ._ metadata；外部媒體上提高其清理優先級。"
+        return "再加入 __MACOSX，以及主檔仍存在、但不含資源分支或未知內容的 ._ 側邊檔；Finder 標籤等資訊可能消失。"
       case .aggressive:
-        return "沿用外部媒體的 metadata-only AppleDouble 清理範圍；真正含資源分支、未知 payload 或格式不明的 ._ 仍不會自動刪除。"
+        return "沿用上一級的 ._ 側邊檔範圍；含資源分支、未知內容或格式不明的檔案仍只供檢視。"
       case .ultraAggressive:
-        return "再顯示資源分支、不明 ._ 檔、舊式 metadata 與 macOS 卷宗資料；敏感 AppleDouble 仍只供檢視。"
+        return "再顯示含資源分支或格式不明的 ._ 檔，以及舊式與 macOS 管理資料；這些項目多數只供檢視。"
       case .custom:
-        return "自行選擇要檢查的隱藏中繼資料類型；外部媒體仍維持 resource fork／未知 payload 的不可自動刪除紅線。"
+        return "自行選擇要檢查的隱藏資料；含資源分支或未知內容的 ._ 檔仍只供檢視。"
       }
     }
 
     switch self {
     case .ultraConservative:
-      return "只找 .DS_Store 與可驗證的 ._.DS_Store；清除後只會重設 Finder 顯示偏好。"
+      return "只找 Finder 顯示資訊；清除後排序、檢視方式或圖示位置可能重設。"
     case .conservative:
-      return "加入 Windows 顯示中繼資料及其可驗證的 AppleDouble 側邊檔。"
+      return "加入 Windows 縮圖與資料夾外觀檔，以及已驗證的伴隨側邊檔。"
     case .balanced:
-      return "再加入 __MACOSX，以及主檔已不存在且不含資源分支的 AppleDouble 殘留。"
+      return "再加入 __MACOSX，以及主檔已不存在、不含資源分支或未知內容的 ._ 側邊檔。"
     case .aggressive:
-      return "再加入仍有同名主檔、但沒有資源分支或未知 entry 的 ._ metadata；需逐項確認。"
+      return "再加入主檔仍存在、但不含資源分支或未知內容的 ._ 側邊檔；Finder 標籤等資訊可能消失。"
     case .ultraAggressive:
-      return "再顯示資源分支、不明 ._ 檔、舊式 metadata 與 macOS 卷宗資料；Spotlight／FSEvents 可在警告後逐項選取，其餘只供檢視。"
+      return "再顯示含資源分支或格式不明的 ._ 檔，以及舊式與 macOS 管理資料；Spotlight 與檔案變更紀錄可逐項選取，其餘只供檢視。"
     case .custom:
       return "自行選擇要檢查的隱藏中繼資料類型；所有可執行項目仍需逐項勾選。"
     }
@@ -950,48 +950,46 @@ enum CleanupScope: String, CaseIterable, Identifiable, Codable, Hashable {
     case .standardCaches:
       return "~/Library/Caches 中可重建的 App 快取。"
     case .sandboxAndGroupCaches:
-      return "沙盒 App 與 Group Container 的標準 Caches 目錄。"
+      return "沙盒 App 與共用 App 容器中的標準快取。"
     case .clipboardTemporary:
-      return "Universal Clipboard 封存等明確暫存。"
+      return "跨裝置剪貼簿的暫存；清除後目前剪貼的內容可能消失。"
     case .applicationWebCaches:
-      return "只辨識名稱明確的 Cache、Code Cache、GPUCache 與 CacheStorage；不碰 Cookie、資料庫或 Local Storage。"
+      return "App 的網頁程式碼與繪圖快取；離線網頁內容可能需要重新下載。"
     case .developerCaches:
-      return "Xcode DerivedData、Simulator cache 與裝置支援檔等可重建開發資料。"
+      return "Xcode 建置資料、模擬器快取與裝置支援檔；下次使用時可能需要重建或下載。"
     case .packageManagerCaches:
       return "Homebrew、pip、npm、Conda 等下載或未使用套件快取。"
     case .downloadResidue:
-      return "Downloads 中已停滯的未完成下載，以及久未使用的安裝映像／套件；高影響檔案不會自動勾選。"
+      return "下載資料夾中停滯的下載檔與舊安裝檔；移除後可能需要重新下載。"
     case .appLeftovers:
-      return
-        "只在 Caches、Logs、HTTPStorages、Saved Application State 與 WebKit 等可重建區域辨識已卸載 App 的 reverse-DNS 殘留。"
+      return "在可重新建立的快取、日誌與網頁資料位置，尋找已卸載 App 的殘留。"
     case .brokenPreferences:
-      return "只列出可證明無法解析、且非 Apple domain 的 ~/Library/Preferences plist；不以『找不到 App』推測偏好設定可刪。"
+      return "只列出格式損壞、無法解析的第三方 App 偏好設定檔；清除後設定可能回到預設值。"
     case .diagnosticsAndLogs:
-      return "使用者層 crash report 與 App logs；清除後會失去故障排查紀錄。"
+      return "目前使用者的 App 故障報告與日誌；清除後無法回看舊紀錄。"
     case .highImpactUserData:
-      return "iOS 備份、Xcode Archives、Mail Downloads 等可回收但可能仍有價值的資料。"
+      return "iPhone／iPad 備份、Xcode 封存與 Mail 附件；清除後舊版本或離線內容可能無法恢復。"
     case .trashBins:
-      return
-        "清空目前使用者的 ~/.Trash，以及本機可寫外接卷宗 .Trashes/<目前 UID> 中掃描時已列出的直接子項；不碰其他使用者、NAS #recycle 或整棵 .Trashes。此操作不經另一個垃圾桶。"
+      return "只永久刪除本次掃描列出的目前使用者垃圾桶項目；清除後無法從 Finder 還原。"
     case .systemManagedReview:
-      return "Time Machine snapshot、系統快取與系統診斷；App 只說明，不直接刪除。"
+      return "Time Machine 快照、系統快取與系統診斷資料；只供檢視。"
     case .folderFinderMetadata:
       return ".DS_Store 保存 Finder 排序、檢視方式與圖示位置；Finder 需要時會重新建立。"
     case .folderWindowsMetadata:
       return "Thumbs.db、ehthumbs.db 與 Desktop.ini 保存 Windows 縮圖或資料夾外觀。"
     case .folderArchiveMetadata:
-      return "__MACOSX 是 macOS 壓縮工具用來保存 Finder metadata 的伴隨資料夾。"
+      return "__MACOSX 是 Mac 壓縮檔中的伴隨資料夾，可能保存 Finder 標籤、註解與資源分支。"
     case .folderAppleDoubleRemnants:
-      return "只列出 binary header 有效、同名主檔已不存在，而且不含資源分支或未知 entry 的 ._ 殘留。"
+      return "主檔已不存在、且已確認不含資源分支或未知內容的 ._ 側邊檔。"
     case .folderAppleDouble:
-      return "同名主檔仍存在的 AppleDouble metadata；主檔內容不會刪除，但標籤、Finder 資訊或延伸屬性可能消失。"
+      return "主檔仍存在的 ._ 側邊檔；主檔內容會保留，但 Finder 標籤或其他 Mac 專用資訊可能消失。"
     case .folderAppleDoubleReview:
-      return "含資源分支、未知 entry、package／symlink companion 或無法驗證格式的 ._ 項目；只供人工檢查。"
+      return "含資源分支或未知內容、對應 App 套件或符號連結，或格式無法驗證的 ._ 側邊檔；只供檢視。"
     case .folderMacManagedReview:
       return
-        ".Spotlight-V100 與 .fseventsd 可逐項選擇 Finder 可見垃圾桶或直接徹底刪除；它們不會被批次勾選。舊版不可見垃圾桶殘留會另列成只能直接刪除的候選；文件版本與其他 marker 仍只供檢視。"
+        "Spotlight 搜尋索引與檔案變更紀錄可逐項選擇移到 Finder 垃圾桶或直接刪除；舊版不可見垃圾桶殘留只能直接刪除。文件版本等系統資料只供檢視。"
     case .folderLegacyReview:
-      return ".AppleDouble、.AppleDB 與 .AppleDesktop 可能屬於舊式檔案服務 metadata；只供人工檢查。"
+      return ".AppleDouble、.AppleDB 與 .AppleDesktop 可能保存舊式檔案服務的 Mac 專用資訊；只供檢視。"
     }
   }
 

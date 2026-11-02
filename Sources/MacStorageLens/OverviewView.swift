@@ -9,10 +9,7 @@ struct OverviewView: View {
       VStack(alignment: .leading, spacing: 20) {
         LensPageHeader(
           eyebrow: activeTarget.displayName,
-          title: "儲存空間總覽",
-          subtitle: activeTarget.kind == .system
-            ? "把 APFS 容量帳務、可遍歷資料樹、受保護差額與安全清理分開呈現。"
-            : "目前報告目標為\(activeTarget.kind == .volume ? "磁碟" : "資料夾")；容量帳務與路徑資料樹會依目標語意分開顯示。"
+          title: "儲存空間總覽"
         ) {
           overviewActions
         }
@@ -24,7 +21,7 @@ struct OverviewView: View {
             VStack(alignment: .leading, spacing: 16) {
               liveCapacityCard(document: document)
               LensPanel {
-                ProgressView("正在建立完整容量地圖…")
+                ProgressView("正在建立容量地圖…")
                   .frame(maxWidth: .infinity, minHeight: 420)
               }
               ScanQualityCard(summary: document.summary)
@@ -134,7 +131,7 @@ struct OverviewView: View {
 
   @ViewBuilder
   private func liveCapacityCard(document: ReportDocument?) -> some View {
-    if let capacity = model.liveCapacity {
+    if let capacity = model.displayedLiveCapacity {
       CapacityHeroCard(capacity: capacity, document: document)
     } else {
       LensPanel {
@@ -177,6 +174,9 @@ private struct CapacityHeroCard: View {
 
   private var capacityStory: some View {
     VStack(alignment: .leading, spacing: 17) {
+      Text(capacityScopeTitle)
+        .font(.caption)
+        .foregroundStyle(.secondary)
       HStack(alignment: .top) {
         VStack(alignment: .leading, spacing: 5) {
           Text("目前已用")
@@ -204,10 +204,10 @@ private struct CapacityHeroCard: View {
 
       HStack(spacing: 10) {
         CapacityLegendItem(
-          title: "固定占用",
+          title: "其餘已用空間",
           value: committedBytes,
           color: LensTheme.accentDeep,
-          detail: "目前已用容量扣除可回收估計後的部分；它不會因游標停留而改變容量。"
+          detail: "目前已用容量扣除可回收估計的部分。"
         )
         CapacityLegendItem(
           title: "可回收估計",
@@ -219,7 +219,7 @@ private struct CapacityHeroCard: View {
           title: "真正空閒",
           value: freeBytes,
           color: LensTheme.slate,
-          detail: "目前沒有配置給任何檔案的空間，不是隱藏資料。"
+          detail: "目前未配置給檔案的空間。"
         )
       }
 
@@ -228,7 +228,7 @@ private struct CapacityHeroCard: View {
           message: model.statusMessage,
           kind: model.reportStatusKind,
           isBusy: model.isFullScanRunning || model.isLoadingReport,
-          primaryActionTitle: "Finder 顯示",
+          primaryActionTitle: "在 Finder 中顯示",
           primaryActionSymbol: "finder",
           primaryAction: { model.openInFinder(document.url.path) },
           secondaryActionTitle: "打開報告",
@@ -236,12 +236,19 @@ private struct CapacityHeroCard: View {
           secondaryAction: { model.openFile(document.url.path) }
         )
 
-        Text("最新完成報告：\(document.summary.generatedAt) · 掃描器 \(document.summary.scannerVersion)")
+        Text("目前報告時間：\(document.summary.generatedAt) · 掃描器 \(document.summary.scannerVersion)")
           .font(.caption2)
           .foregroundStyle(.tertiary)
           .lineLimit(1)
       }
     }
+  }
+
+  private var capacityScopeTitle: String {
+    let target = document?.summary.target ?? model.selectedScanTarget
+    return target.kind == .folder
+      ? "「\(target.displayName)」所在磁碟的即時容量"
+      : "「\(target.displayName)」的即時容量"
   }
 
   private var metricGrid: some View {
@@ -254,7 +261,7 @@ private struct CapacityHeroCard: View {
         value: capacity.availableBytes.formattedBytes,
         symbol: "square.dashed",
         tint: LensTheme.slate,
-        detail: "檔案系統目前沒有配置給任何檔案的空間。這不是隱藏資料，也不需要清理。"
+        detail: "目前未配置給檔案的空間。"
       )
       CompactMetric(
         title: "重要用途可用",
@@ -312,10 +319,10 @@ private struct CapacityCompositionBar: View {
       segments: [
         LensBarSegment(
           id: "committed",
-          title: "固定占用",
+          title: "其餘已用空間",
           value: committed,
           color: LensTheme.accentDeep,
-          detail: "目前已用空間扣除可回收估計後的固定占用。"
+          detail: "目前已用容量扣除可回收估計的部分。"
         ),
         LensBarSegment(
           id: "reclaimable",
@@ -431,7 +438,7 @@ private struct ScanQualityCard: View {
   @LensState private var showsTechnicalDetails = false
 
   private var coverageTitle: String {
-    summary.hasPartialCoverage ? "部分" : "完整"
+    summary.hasPartialCoverage ? "有記錄" : "未記錄"
   }
 
   private var badgeIsPositive: Bool {
@@ -440,61 +447,70 @@ private struct ScanQualityCard: View {
 
   private var accessBadgeTitle: String {
     if summary.targetKind != .system {
-      return "所選位置可讀"
+      return "僅掃描所選位置"
     }
     if summary.hasAmbiguousLegacyAdministratorProbe {
-      return "舊報告只測到管理員子程序"
+      return "舊報告未記錄 App 權限"
     }
     if summary.usedAppTCCOverlay {
-      return "App 權限已合併"
+      return "已合併 App 讀取的資料"
     }
     switch summary.scannerPrivilegeChannel {
     case "app_direct":
-      return summary.appFullDiskAccessAvailable ? "App 權限已生效" : "App 權限探針未通過"
+      return summary.appFullDiskAccessAvailable ? "App 可讀受保護資料" : "App 讀取權限受限"
     case "terminal":
-      return summary.scannerFullDiskAccessAvailable ? "Terminal TCC 已生效" : "Terminal TCC 受限"
+      return summary.scannerFullDiskAccessAvailable ? "Terminal 可讀受保護資料" : "Terminal 讀取權限受限"
     case "administrator_only":
       return summary.scannerFullDiskAccessAvailable
-        ? "管理員子程序可讀受保護路徑"
-        : "管理員子程序 TCC 受限"
+        ? "管理員程序可讀受保護資料"
+        : "管理員程序讀取權限受限"
     default:
-      return summary.fullDiskAccessAvailable ? "本次掃描 TCC 已生效" : "本次掃描 TCC 受限"
+      return summary.fullDiskAccessAvailable ? "可讀受保護資料" : "讀取權限受限"
     }
   }
 
   private var accessExplanation: String {
     if summary.targetKind != .system {
-      return
-        "外接磁碟與指定資料夾只讀取使用者明確選擇的位置；Scanner 2.5.4 不再為這類掃描探測 Mail、Messages、Safari 或 AddressBook，因此完整磁碟存取狀態標示為不適用。"
+      return "本次只掃描所選磁碟或資料夾，未測試郵件、訊息等受保護資料的讀取權限。"
     }
     if summary.hasAmbiguousLegacyAdministratorProbe {
-      return
-        "這是 scanner 2.5.0 的舊報告。它只記錄獨立管理員／root 子程序的探針，因此該探針失敗不能用來判定 MacStorageLens App 是否已獲完整磁碟存取。請用目前版本重新掃描，App 與掃描子程序會分開記錄。"
+      return "這份舊報告只測試管理員程序的讀取權限，未記錄 App 的權限。請重新掃描確認。"
     }
     if summary.usedAppTCCOverlay {
       let delta = signedBytes(summary.tccOverlayDeltaBytes)
-      return
-        "MacStorageLens App 先以自己的 TCC 權限讀取受保護的使用者資料，再把該資料樹合併到管理員唯讀系統掃描。管理員子程序即使無法直接讀取 Mail／Messages，也不代表 App 授權失敗。本次合併容量變化為 \(delta)。"
+      return "App 已將自己讀取的受保護資料合併到管理員掃描結果；合併後容量變化為 \(delta)。"
     }
     if summary.scannerPrivilegeChannel == "administrator_only" {
       if summary.appFullDiskAccessAvailable {
-        return "App 權限探針已通過，但這次沒有成功建立／合併 App TCC 覆蓋；畫面顯示的是管理員子程序自己的受限狀態。請查看 App 覆蓋狀態與診斷後重新掃描。"
+        return "App 已通過讀取權限測試，但資料未成功合併；目前只顯示管理員程序的掃描結果。請展開技術診斷查看合併狀態後重新掃描。"
       }
-      return "這次只有獨立管理員子程序完成掃描。root 權限不等於完整磁碟存取；受 TCC 保護的路徑可能仍不可讀。"
+      return "本次只有管理員程序完成掃描。管理員權限無法取代完整磁碟存取權，部分受保護資料可能無法讀取。"
     }
     if summary.scannerPrivilegeChannel == "app_direct" {
       return summary.appFullDiskAccessAvailable
-        ? "本次由 MacStorageLens App 直接掃描，App 自身的受保護路徑探針已通過。資料是否完整仍以診斷行與資料覆蓋狀態為準。"
-        : "本次由 MacStorageLens App 直接掃描，但 App 自身的受保護路徑探針沒有通過；請完全退出 App、核對完整磁碟存取後重新開啟。"
+        ? "App 已通過受保護資料的讀取測試；是否有其他遺漏，請查看讀取限制紀錄與診斷訊息。"
+        : "App 未通過受保護資料的讀取測試。請確認完整磁碟存取權已開啟，完全退出 App 後重新開啟並掃描。"
     }
     if summary.scannerPrivilegeChannel == "terminal" || summary.launcherMode == "terminal" {
       return summary.scannerFullDiskAccessAvailable
-        ? "本次由 Terminal 啟動，使用的是 Terminal 自己的完整磁碟存取權；它與 MacStorageLens App 的授權互相獨立。"
-        : "本次由 Terminal 啟動，但 Terminal 的受保護路徑探針沒有通過；請核對 Terminal 的完整磁碟存取權。"
+        ? "本次使用 Terminal 的完整磁碟存取權掃描；這與 App 的授權互相獨立。"
+        : "Terminal 未通過受保護資料的讀取測試，請確認 Terminal 的完整磁碟存取權。"
     }
     return summary.fullDiskAccessAvailable
-      ? "本次報告的有效 TCC 覆蓋已通過。報告生成、管理員權限與每個路徑是否可讀仍分開計算。"
-      : "本次報告沒有取得可驗證的完整磁碟存取覆蓋；請依掃描通道、探針與診斷行判讀，不要只看 root 權限。"
+      ? "本次掃描已通過受保護資料的讀取測試；是否有其他遺漏，請查看讀取限制紀錄與診斷訊息。"
+      : "本次未能確認受保護資料的讀取權限，請展開技術診斷查看測試結果。"
+  }
+
+  private var overlayStatusTitle: String {
+    switch summary.tccOverlayStatus {
+    case "READY": return "補充資料已讀取，尚未確認合併"
+    case "APPLIED": return "合併完成"
+    case "MERGE_FAILED": return "合併失敗，請重新掃描"
+    case "FAILED": return "補充讀取失敗，請重新掃描"
+    case "APP_FDA_BLOCKED": return "App 讀取受阻，請確認完整磁碟存取權後重新掃描"
+    case "APP_FDA_INDETERMINATE": return "未能確認 App 讀取權限，請確認授權後重新掃描"
+    default: return "未識別狀態，請重新掃描"
+    }
   }
 
   private func probeTitle(_ value: String) -> String {
@@ -517,7 +533,6 @@ private struct ScanQualityCard: View {
         HStack(alignment: .top) {
           LensSectionHeading(
             "掃描品質",
-            subtitle: "App、管理員子程序、Terminal 與資料覆蓋分開判讀",
             symbol: badgeIsPositive ? "checkmark.shield.fill" : "exclamationmark.shield.fill"
           )
           Spacer()
@@ -538,27 +553,27 @@ private struct ScanQualityCard: View {
           alignment: .leading,
           spacing: 8
         ) {
-          DetailPill(title: "掃描通道", value: summary.scanChannelDisplayName)
-          DetailPill(title: "App TCC", value: probeTitle(summary.appFullDiskAccessProbe))
-          DetailPill(title: "掃描子程序 TCC", value: probeTitle(summary.scannerFullDiskAccessProbe))
+          DetailPill(title: "掃描方式", value: summary.scanChannelDisplayName)
+          DetailPill(title: "App 讀取權限", value: probeTitle(summary.appFullDiskAccessProbe))
+          DetailPill(title: "掃描程序讀取權限", value: probeTitle(summary.scannerFullDiskAccessProbe))
           DetailPill(title: "管理員", value: summary.administratorReadAccess ? "已取得" : "未取得")
           DetailPill(title: "報告生成", value: summary.reportComplete ? "完成" : "未完成")
-          DetailPill(title: "資料覆蓋", value: coverageTitle)
-          DetailPill(title: "診斷行", value: "\(summary.duErrorLineCount)")
-          DetailPill(title: "權限／TCC", value: "\(summary.errorCount)")
+          DetailPill(title: "讀取限制紀錄", value: coverageTitle)
+          DetailPill(title: "診斷訊息", value: "\(summary.duErrorLineCount)")
+          DetailPill(title: "權限錯誤", value: "\(summary.errorCount)")
         }
 
         DisclosureGroup(isExpanded: $showsTechnicalDetails) {
           VStack(alignment: .leading, spacing: 6) {
             if summary.appFullDiskAccessProbePath != "NONE" {
-              Text("App 探針：\(summary.appFullDiskAccessProbePath)")
+              Text("App 讀取測試路徑：\(summary.appFullDiskAccessProbePath)")
                 .font(.caption2.monospaced())
                 .foregroundStyle(.tertiary)
                 .lineLimit(1)
                 .truncationMode(.middle)
             }
             if summary.scannerFullDiskAccessProbePath != "NONE" {
-              Text("掃描子程序探針：\(summary.scannerFullDiskAccessProbePath)")
+              Text("掃描程序讀取測試路徑：\(summary.scannerFullDiskAccessProbePath)")
                 .font(.caption2.monospaced())
                 .foregroundStyle(.tertiary)
                 .lineLimit(1)
@@ -566,19 +581,19 @@ private struct ScanQualityCard: View {
             }
             if summary.usedAppTCCOverlay {
               Text(
-                "App TCC 覆蓋：\(summary.tccOverlayTreeBytes.formattedBytes)；取代 \(summary.tccOverlayReplacedBytes.formattedBytes)；差額 \(signedBytes(summary.tccOverlayDeltaBytes))"
+                "App 補充資料：\(summary.tccOverlayTreeBytes.formattedBytes)；取代 \(summary.tccOverlayReplacedBytes.formattedBytes)；差額 \(signedBytes(summary.tccOverlayDeltaBytes))"
               )
               .font(.caption2.monospacedDigit())
               .foregroundStyle(.tertiary)
             } else if summary.tccOverlayStatus != "NOT_REQUESTED" {
-              Text("App TCC 覆蓋狀態：\(summary.tccOverlayStatus)")
+              Text("App 資料合併狀態：\(overlayStatusTitle)（\(summary.tccOverlayStatus)）")
                 .font(.caption2.monospaced())
                 .foregroundStyle(.tertiary)
             }
           }
           .padding(.top, 7)
         } label: {
-          Label("技術診斷與探針路徑", systemImage: "wrench.and.screwdriver")
+          Label("技術診斷", systemImage: "wrench.and.screwdriver")
             .font(.caption.weight(.semibold))
             .foregroundStyle(.secondary)
         }
@@ -603,7 +618,6 @@ private struct ReconciliationCard: View {
         HStack(alignment: .top) {
           LensSectionHeading(
             headingTitle,
-            subtitle: headingSubtitle,
             symbol: "arrow.triangle.branch"
           )
           Spacer()
@@ -613,7 +627,7 @@ private struct ReconciliationCard: View {
         if summary.targetKind == .folder {
           HStack(spacing: 10) {
             ReconciliationMetric(
-              title: "資料夾資料樹",
+              title: "資料夾占用空間",
               value: summary.targetTreeBytes.formattedBytes,
               tint: LensTheme.sage,
               detail: "目前所選資料夾及其可讀子項目的掃描快照。"
@@ -628,11 +642,11 @@ private struct ReconciliationCard: View {
               title: "所在磁碟可用",
               value: summary.targetVolumeAvailableBytes.formattedBytes,
               tint: LensTheme.slate,
-              detail: "所在磁碟目前未使用或可供重要用途使用的容量。"
+              detail: "掃描時，所在磁碟回報的可用容量。"
             )
           }
 
-          Text("資料夾模式只把所選路徑畫成可深入的資料樹；所在磁碟的剩餘空間屬於磁碟帳務，不會被畫成資料夾的子節點。")
+          Text("圖表只包含所選資料夾；「所在磁碟容量」與「所在磁碟可用」是整顆磁碟的數字。")
             .font(.caption)
             .foregroundStyle(.secondary)
             .fixedSize(horizontal: false, vertical: true)
@@ -642,7 +656,7 @@ private struct ReconciliationCard: View {
               title: usedLabel,
               value: usedBytes.formattedBytes,
               tint: LensTheme.accentSoft,
-              detail: "df／APFS 回報的已用容量；等於下方可映射資料樹與未解析差額的合計。"
+              detail: "檔案系統回報的已用容量，等於已列出路徑的容量與未解析差額的合計。"
             )
             ReconciliationMetric(
               title: visibleTreeTitle,
@@ -665,12 +679,12 @@ private struct ReconciliationCard: View {
             visibleDetail: visibleTreeDetail,
             gapTitle: gapTitle,
             gapDetail: gapDetail,
-            accessibilityTitle: headingTitle + "帳務核對"
+            accessibilityTitle: headingTitle
           )
 
           if usesStableVolumeTree {
             VStack(alignment: .leading, spacing: 10) {
-              Text("卷宗根目錄狀態")
+              Text("磁碟根目錄狀態")
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(.secondary)
 
@@ -687,14 +701,14 @@ private struct ReconciliationCard: View {
                     ? LensTheme.sand : LensTheme.sage
                 )
                 LensStatusBadge(
-                  title: "FSEvents：\(volatileStatusTitle(summary.targetFSEventsRootStatus))",
+                  title: "檔案變更紀錄：\(volatileStatusTitle(summary.targetFSEventsRootStatus))",
                   symbol: summary.targetFSEventsRootStatus == "PRESENT"
                     ? "waveform.path.ecg" : "checkmark",
                   tint: summary.targetFSEventsRootStatus == "PRESENT"
                     ? LensTheme.sand : LensTheme.sage
                 )
                 LensStatusBadge(
-                  title: "卷宗垃圾桶：\(volatileStatusTitle(summary.targetTrashRootStatus))",
+                  title: "磁碟垃圾桶：\(volatileStatusTitle(summary.targetTrashRootStatus))",
                   symbol: summary.targetTrashRootStatus == "PRESENT" ? "trash" : "checkmark",
                   tint: summary.targetTrashRootStatus == "PRESENT"
                     ? LensTheme.sand : LensTheme.sage
@@ -704,13 +718,13 @@ private struct ReconciliationCard: View {
               HStack(alignment: .firstTextBaseline, spacing: 10) {
                 if summary.totalDurationSeconds > 0 {
                   Label(
-                    "Scanner 2.5.4：總計 \(summary.totalDurationSeconds) 秒 · 資料樹 \(summary.pathScanDurationSeconds) 秒",
+                    "掃描耗時：總計 \(summary.totalDurationSeconds) 秒 · 資料樹 \(summary.pathScanDurationSeconds) 秒",
                     systemImage: "stopwatch"
                   )
                   .font(.caption2.monospacedDigit())
                   .foregroundStyle(.tertiary)
                   .help(
-                    "預檢 \(summary.preflightDurationSeconds) 秒 · 準備 \(summary.prepareDurationSeconds) 秒 · 資料樹 \(summary.pathScanDurationSeconds) 秒 · 磁碟狀態 \(summary.metadataDurationSeconds) 秒 · 寫報告 \(summary.reportWriteDurationSeconds) 秒 · Scanner 總計 \(summary.totalDurationSeconds) 秒"
+                    "預檢 \(summary.preflightDurationSeconds) 秒 · 準備 \(summary.prepareDurationSeconds) 秒 · 資料樹 \(summary.pathScanDurationSeconds) 秒 · 磁碟狀態 \(summary.metadataDurationSeconds) 秒 · 寫報告 \(summary.reportWriteDurationSeconds) 秒 · 掃描總計 \(summary.totalDurationSeconds) 秒"
                   )
                 }
                 Spacer(minLength: 4)
@@ -725,7 +739,7 @@ private struct ReconciliationCard: View {
 
           if scanDeltaBytes != 0 {
             Label(
-              "掃描期間帳務變化：\(signedBytes(scanDeltaBytes))",
+              "掃描期間已用容量變化：\(signedBytes(scanDeltaBytes))",
               systemImage: "clock.arrow.2.circlepath"
             )
             .font(.caption.weight(.medium))
@@ -750,22 +764,14 @@ private struct ReconciliationCard: View {
 
   private var headingTitle: String {
     switch summary.targetKind {
-    case .system: return "Data volume 核對"
+    case .system: return "macOS 資料卷容量核對"
     case .volume: return "磁碟容量核對"
     case .folder: return "資料夾掃描範圍"
     }
   }
 
-  private var headingSubtitle: String {
-    switch summary.targetKind {
-    case .system: return "Data 的 df 帳務與可映射資料樹"
-    case .volume: return "磁碟已用帳務與可映射資料樹"
-    case .folder: return "資料夾大小與所在磁碟容量分開呈現"
-    }
-  }
-
   private var usedLabel: String {
-    summary.targetKind == .system ? "Data 帳務已用" : "磁碟帳務已用"
+    summary.targetKind == .system ? "資料卷已用" : "磁碟已用"
   }
 
   private var usedBytes: Int64 {
@@ -777,25 +783,25 @@ private struct ReconciliationCard: View {
   }
 
   private var visibleTreeTitle: String {
-    usesStableVolumeTree ? "可映射穩定資料樹" : "可映射資料樹"
+    "已列出路徑的容量"
   }
 
   private var visibleTreeDetail: String {
     if usesStableVolumeTree {
-      return "可對應到一般使用者路徑的穩定資料樹；為避免重複清理後越掃越慢，深度掃描會略過 .Trashes、Spotlight、FSEvents 與其他會重建的卷宗中繼資料。"
+      return "已掃描並列出路徑的容量；不含垃圾桶、搜尋索引與檔案變更紀錄的內容。"
     }
-    return "掃描器可對應到真實路徑與資料夾樹的容量，對應下方綠色區段。"
+    return "已掃描並列出檔案或資料夾路徑的容量。"
   }
 
   private var gapTitle: String {
-    usesStableVolumeTree ? "卷宗中繼資料／垃圾桶" : "帳務差額（未解析）"
+    usesStableVolumeTree ? "未展開的系統資料與容量差額" : "未解析容量差額"
   }
 
   private var gapDetail: String {
     if usesStableVolumeTree {
-      return "完整 df 已用帳務中，未做深度資料樹展開的卷宗垃圾桶、Spotlight／FSEvents 等中繼資料，以及其他檔案系統差額；它仍計入容量，但不會拖慢每次重掃。"
+      return "未展開的磁碟垃圾桶、搜尋索引、檔案變更紀錄，以及其他檔案系統差額。"
     }
-    return "已用容量中無法直接映射成一般路徑的部分，對應下方紫色區段；它不等於垃圾。"
+    return "已用容量中未能對應到檔案或資料夾路徑的部分，不等於可清理容量。"
   }
 
   private var gapExplanation: String {
@@ -805,13 +811,13 @@ private struct ReconciliationCard: View {
         ? ".Trashes、.Spotlight-V100、.fseventsd 等"
         : summary.volumeVolatileMetadataNames.joined(separator: "、")
       return
-        "外接卷宗的完整已用容量仍由 df 保留；為避免垃圾桶內的舊索引、Spotlight／FSEvents 重建資料在每次掃描時被再次遞迴遍歷，Scanner 2.5.4 不展開 \(names)。這些容量會留在紫色帳務區，不代表全部可清理；安全清理頁會另外辨識精確候選。"
+        "掃描略過垃圾桶、Spotlight 搜尋索引與檔案變更紀錄的內容，以縮短重掃時間，包含 \(names)。它們仍計入已用容量；這部分也包含其他檔案系統差額，不能全部視為可刪除資料。"
     }
-    return "未解析差額可能混合不可讀路徑、快照專屬區塊、APFS metadata、clone／hard-link 語意與開啟中的檔案；它不等於可清理容量。"
+    return "未解析差額可能來自無法讀取的資料夾、快照、檔案系統本身的資料、檔案共用區塊，或使用中的檔案，不能全部視為可刪除資料。"
   }
 
   private var gapDisclosureTitle: String {
-    usesStableVolumeTree ? "為什麼卷宗中繼資料不展開？" : "為什麼會有帳務差額？"
+    usesStableVolumeTree ? "哪些系統資料未展開？" : "為什麼會有容量差額？"
   }
 
   private var treeBytes: Int64 {
@@ -908,11 +914,11 @@ private struct ReconciliationMetric: View {
 struct AccountingBar: View {
   let visible: Int64
   let gap: Int64
-  var visibleTitle = "可映射資料樹"
-  var visibleDetail = "掃描器能對應到真實路徑的容量。"
-  var gapTitle = "帳務差額（未解析）"
-  var gapDetail = "快照、權限限制、APFS metadata 或共享區塊等未能映射成一般路徑的容量。"
-  var accessibilityTitle = "Data volume 帳務核對"
+  var visibleTitle = "已列出路徑的容量"
+  var visibleDetail = "已掃描並列出檔案或資料夾路徑的容量。"
+  var gapTitle = "未解析容量差額"
+  var gapDetail = "快照、讀取限制、檔案系統資料或共用區塊等未能對應到檔案路徑的容量。"
+  var accessibilityTitle = "macOS 資料卷容量核對"
 
   var body: some View {
     LensSegmentedBar(
@@ -979,24 +985,24 @@ private struct DetailPill: View {
 
   private var detail: String {
     switch title {
-    case "掃描通道":
-      return "顯示這份報告由 App、管理員授權或 Terminal 相容模式中的哪一條責任鏈產生。"
-    case "App TCC":
-      return "MacStorageLens App 本身對受保護使用者資料的完整磁碟存取權探測結果。"
-    case "掃描子程序 TCC":
-      return "實際執行唯讀掃描的子程序對受保護路徑的讀取結果；它與 App 權限是不同責任鏈。"
+    case "掃描方式":
+      return "本次掃描由 App、管理員授權或 Terminal 執行。"
+    case "App 讀取權限":
+      return "App 是否能讀取受完整磁碟存取權保護的資料。"
+    case "掃描程序讀取權限":
+      return "掃描程序是否能讀取受保護資料；它的讀取權限可能與 App 不同。"
     case "管理員":
-      return "表示本次掃描是否取得管理員唯讀權限；管理員權限不能取代 TCC 完整磁碟存取權。"
+      return "本次掃描是否取得管理員權限；它無法取代完整磁碟存取權。"
     case "報告生成":
-      return "只有尾端含 report_complete=true 的完整 Markdown 才會加入掃描紀錄。"
-    case "資料覆蓋":
-      return "綜合 App TCC、掃描子程序與覆蓋合併後，這份報告可讀資料的完整程度。"
-    case "診斷行":
-      return "掃描過程記錄的受限或診斷訊息數；有診斷行不代表整份掃描失敗。"
-    case "權限／TCC":
-      return "與 Permission denied、Operation not permitted 或 TCC 限制相關的訊息數。"
+      return "報告完成後才會加入掃描紀錄。"
+    case "讀取限制紀錄":
+      return "依報告中的診斷訊息與掃描狀態，顯示是否記錄讀取限制。"
+    case "診斷訊息":
+      return "掃描過程記錄的限制或診斷訊息數；有訊息不代表整份掃描失敗。"
+    case "權限錯誤":
+      return "因權限不足而無法讀取資料的訊息數。"
     default:
-      return "這是掃描品質的診斷欄位，用來判斷容量地圖的來源與完整度。"
+      return "本次掃描的來源與讀取狀態。"
     }
   }
 }
@@ -1011,16 +1017,11 @@ private struct OverviewChartPanel: View {
       VStack(alignment: .leading, spacing: 17) {
         HStack(alignment: .top, spacing: 14) {
           LensSectionHeading(
-            "完整容量地圖",
+            "容量地圖",
             subtitle: chartSubtitle,
             symbol: "circle.hexagongrid.fill"
           )
           Spacer(minLength: 8)
-          LensStatusBadge(
-            title: "游標檢視 · 右鍵 Finder · 點擊深入",
-            symbol: "cursorarrow.motionlines",
-            tint: LensTheme.accentSoft
-          )
         }
 
         ViewThatFits(in: .horizontal) {
@@ -1041,17 +1042,7 @@ private struct OverviewChartPanel: View {
   }
 
   private var chartSubtitle: String {
-    guard let summary = model.document?.summary else {
-      return "容量帳務與可深入的資料夾樹分層顯示。"
-    }
-    switch summary.targetKind {
-    case .system:
-      return "掃描快照：內圈維持 APFS 帳務語意；進入 Data 的真實資料夾層後重新分配支系色相，外圈依深度明顯漸亮。"
-    case .volume:
-      return "掃描快照：磁碟帳務使用固定語意色；可深入的資料夾層使用低飽和支系色，外圈依層級漸亮。"
-    case .folder:
-      return "掃描快照：所選資料夾的第一層子項各自取得支系色；同一分支往外保持色相並逐層漸亮。"
-    }
+    "掃描時的容量；同色代表同一分支，越外圈代表越深的資料夾。點一下資料夾進入，按右鍵開啟 Finder 選單。"
   }
 
   private var chart: some View {
@@ -1077,11 +1068,6 @@ private struct OverviewChartPanel: View {
           .foregroundStyle(.secondary)
           .monospacedDigit()
       }
-
-      Text("帳務節點會清楚標示；有真實路徑的項目可右鍵在 Finder 顯示、打開或複製路徑。")
-        .font(.caption)
-        .foregroundStyle(.secondary)
-        .fixedSize(horizontal: false, vertical: true)
 
       Divider().opacity(0.55)
 
@@ -1142,7 +1128,7 @@ private struct OverviewLegendRow: View {
 
       VStack(alignment: .leading, spacing: 3) {
         HStack {
-          Text(item.label)
+          Text(item.storageDisplayLabel)
             .font(.callout.weight(.medium))
             .lineLimit(1)
           Spacer()
@@ -1183,7 +1169,7 @@ private struct OverviewLegendRow: View {
     .onHover { isHovered = $0 }
     .animation(reduceMotion ? nil : LensMotion.hover, value: isHovered)
     .lensHoverHelp(
-      title: item.label,
+      title: item.storageDisplayLabel,
       detail: tooltipDetail,
       value: item.bytes.formattedBytes,
       tint: tint
@@ -1211,32 +1197,32 @@ private struct OverviewLegendRow: View {
     let explanation: String
     switch item.kind {
     case .directFiles:
-      explanation = "這是父資料夾第一層非資料夾項目的虛擬合計；點擊可查看真實檔名、路徑與配置大小。"
+      explanation = "資料夾總占用扣除已列出子資料夾後的差額；點一下讀取目前第一層檔案。"
     case .otherChildren:
-      explanation = "只有同層超過 2,048 個子資料夾時才會自動合併；點擊可展開完整清單並逐項繼續深入，右鍵仍可前往父資料夾。"
+      explanation = "這些子資料夾合併顯示；點一下展開，按右鍵可前往父資料夾。"
     case .accountingGap:
       explanation =
         item.label.contains("卷宗中繼資料")
-        ? "這是完整已用帳務中未做深度展開的卷宗垃圾桶、Spotlight／FSEvents 等中繼資料與檔案系統差額；容量仍被核對，但不會拖慢每次重掃。"
-        : "這是已用容量中無法映射成一般 Finder 路徑的帳務差額，可能含快照、權限限制與 APFS metadata；它不等於垃圾。"
+        ? "未展開的磁碟垃圾桶、搜尋索引、檔案變更紀錄與其他檔案系統差額，不等於可清理容量。"
+        : "未能對應到 Finder 路徑的已用容量，可能包含快照、讀取限制與檔案系統資料，不等於可清理容量。"
     case .containerAccounting:
-      explanation = "這是 APFS 容器層的帳務或 metadata，不是可直接開啟或清理的資料夾。"
+      explanation = "APFS 檔案系統記錄的其他用量，沒有可直接開啟或清理的資料夾。"
     case .scanDelta:
-      explanation = "這是掃描前後磁碟使用量變化的診斷節點，不代表固定存在的檔案。"
+      explanation = "掃描前後已用容量的變化，沒有對應的固定檔案。"
     case .freeSpace:
-      explanation = "這是真正未配置的空間，不是檔案，也不需要清理。"
+      explanation = "掃描時未配置給檔案的空間。"
     case .purgeable:
       explanation = "這是 macOS 估算可在需要時回收的容量，不能等同於一個可直接刪除的資料夾。"
     case .otherVolume:
       explanation =
         item.finderPath == nil
-        ? "這是獨立的 APFS／系統卷帳務；沒有一般 Finder 路徑。"
+        ? "另一個 APFS 卷的容量，沒有一般 Finder 路徑。"
         : "這是另一個已掛載卷；可使用右鍵 Finder 操作查看其位置。"
     case .none:
       explanation =
         item.isNavigable
-        ? "這是真實資料夾；點擊可在資料樹深入，右鍵可使用 Finder 操作。"
-        : "這是容量地圖中的資料節點，目前沒有可執行的 Finder 路徑。"
+        ? "點一下在資料樹查看此資料夾，按右鍵可使用 Finder 操作。"
+        : "此項目沒有可開啟的 Finder 路徑。"
     }
     return prefix + explanation
   }
@@ -1257,9 +1243,9 @@ struct EmptyReportView: View {
         }
 
         VStack(alignment: .leading, spacing: 12) {
-          Text("建立第一份完整容量地圖")
+          Text("建立第一份容量地圖")
             .font(.title2.weight(.semibold))
-          Text("App 會顯示 macOS 原生授權視窗，在背景進行唯讀分析，完成後自動載入最新報告。它不會自動刪除或移動任何系統與使用者資料。")
+          Text("掃描會依所選位置要求存取授權，完成後自動載入報告。掃描只讀取資料，不會刪除或移動檔案。")
             .font(.callout)
             .foregroundStyle(.secondary)
             .fixedSize(horizontal: false, vertical: true)
@@ -1274,7 +1260,7 @@ struct EmptyReportView: View {
             Button {
               model.runFullScan()
             } label: {
-              Label("開始完整掃描", systemImage: "magnifyingglass")
+              Label("開始掃描", systemImage: "magnifyingglass")
             }
             .buttonStyle(LensButtonStyle(kind: .primary))
 
@@ -1401,7 +1387,7 @@ private struct ReportStatusBanner: View {
     switch kind {
     case .empty: return "尚無掃描報告"
     case .loading: return "正在載入報告"
-    case .scanning: return "完整掃描進行中"
+    case .scanning: return "掃描進行中"
     case .ready: return "掃描報告已就緒"
     case .cancelled: return "掃描已取消"
     case .failed: return "掃描未完成"

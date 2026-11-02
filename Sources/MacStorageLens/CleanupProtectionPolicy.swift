@@ -40,12 +40,13 @@ struct CleanupProtectionPolicy {
       return value
     }
     for relative in [
+      ".ssh", ".gnupg", ".aws", ".kube", ".config", ".netrc", ".npmrc", ".pypirc",
       ".cache/huggingface", ".cache/torch", ".ollama/models", ".lmstudio/models",
       ".cache/lm-studio/models", "Library/Caches/ms-playwright*",
       ".local/share/python-environments", "Library/Mobile Documents",
       "Library/CloudStorage",
     ] {
-      add(home.path + "/" + relative, reason: "模型、執行環境或同步資料受到保護")
+      add(home.path + "/" + relative, reason: "重要設定、模型、執行環境或同步資料受到保護")
     }
     // These are stable shared entry points, including an SDK whose physical
     // location may be an external volume. Resolving aliases protects both forms.
@@ -78,6 +79,15 @@ struct CleanupProtectionPolicy {
         unavailable = true
         notices.append("無法完整讀取 Mole 保護清單，暫停可執行清理：\(error.localizedDescription)")
       }
+    }
+
+    do {
+      let ownPaths = try CleanupUserProtectionStore(home: home).load()
+      for path in ownPaths { addLiteral(path, reason: "你已選擇保留這個位置。") }
+      if !ownPaths.isEmpty { notices.append("已套用你在磁碟透視保留的 \(ownPaths.count) 個位置。") }
+    } catch {
+      unavailable = true
+      notices.append("保留清單無法完整讀取，暫停可執行清理：\(error.localizedDescription)")
     }
 
     let registry = home.appendingPathComponent(".config/python/environments.json")
@@ -171,6 +181,19 @@ struct CleanupProtectionPolicy {
     }
   }
 
+  private mutating func addLiteral(_ path: String, reason: String) {
+    let url = URL(fileURLWithPath: path)
+    for variant in Set([url.path, url.resolvingSymlinksInPath().path]) {
+      let components = variant.split(separator: "/").map { component in
+        component.reduce(into: "") { result, character in
+          if "*?[]\\".contains(character) { result.append("\\") }
+          result.append(character)
+        }
+      }
+      protections.append(Protection(components: components, reason: reason))
+    }
+  }
+
   private mutating func add(_ pattern: String, reason: String) {
     let url = URL(fileURLWithPath: pattern).standardizedFileURL
     for path in Set([url.path, url.resolvingSymlinksInPath().standardizedFileURL.path]) {
@@ -197,5 +220,59 @@ struct CleanupProtectionPolicy {
       throw CleanupProtectionError.rejected("保護設定不是有效的小型文字檔")
     }
     return try String(contentsOf: url, encoding: .utf8)
+  }
+}
+
+struct CleanupUserProtectionStore {
+  let home: URL
+  var url: URL {
+    home.appendingPathComponent(
+      "Library/Application Support/MacStorageLens/cleanup-protection.json")
+  }
+  private struct Document: Codable {
+    let version: Int
+    let paths: [String]
+  }
+
+  func load() throws -> [String] {
+    var value = stat()
+    let exists = url.path.withCString { lstat($0, &value) }
+    if exists != 0 && errno == ENOENT { return [] }
+    guard exists == 0, value.st_mode & mode_t(S_IFMT) == mode_t(S_IFREG),
+      value.st_size <= 1024 * 1024
+    else { throw CleanupProtectionError.rejected("磁碟透視的保留清單無法安全讀取。") }
+    let document = try JSONDecoder().decode(Document.self, from: Data(contentsOf: url))
+    guard document.version == 1, document.paths.count <= 5000,
+      document.paths.allSatisfy(Self.validPath)
+    else { throw CleanupProtectionError.rejected("磁碟透視的保留清單格式有誤。") }
+    return document.paths
+  }
+
+  func add(_ path: String) throws {
+    guard Self.validPath(path) else { throw CleanupProtectionError.rejected("這個位置無法加入保留清單。") }
+    try save(Array(Set(try load()).union([path])).sorted())
+  }
+
+  func remove(_ path: String) throws { try save(try load().filter { $0 != path }) }
+
+  private static func validPath(_ path: String) -> Bool {
+    path.hasPrefix("/") && path.utf8.count <= 16384 && !path.split(separator: "/").contains("..")
+      && !path.unicodeScalars.contains { CharacterSet.controlCharacters.contains($0) }
+  }
+
+  private func save(_ paths: [String]) throws {
+    let parent = url.deletingLastPathComponent()
+    try FileManager.default.createDirectory(
+      at: parent, withIntermediateDirectories: true, attributes: [.posixPermissions: 0o700])
+    let values = try parent.resourceValues(forKeys: [.isDirectoryKey, .isSymbolicLinkKey])
+    guard values.isDirectory == true, values.isSymbolicLink != true else {
+      throw CleanupProtectionError.rejected("保留清單的儲存位置不安全。")
+    }
+    let data = try JSONEncoder().encode(Document(version: 1, paths: paths))
+    guard data.count <= 1024 * 1024 else {
+      throw CleanupProtectionError.rejected("保留清單過大，請先整理不需要的項目。")
+    }
+    try data.write(to: url, options: .atomic)
+    try FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: url.path)
   }
 }

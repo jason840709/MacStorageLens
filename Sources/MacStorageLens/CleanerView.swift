@@ -1,6 +1,6 @@
 import SwiftUI
 
-struct CleanerView: View {
+struct AdvancedCleanupView: View {
   @EnvironmentObject private var model: AppModel
   @LensState private var pendingExecutionMode: CleanupExecutionMode?
 
@@ -9,8 +9,7 @@ struct CleanerView: View {
       ScrollView {
         VStack(alignment: .leading, spacing: 20) {
           LensPageHeader(
-            eyebrow: "分級掃描 · 逐項確認",
-            title: "安全清理",
+            title: "進階規則",
             subtitle: headerSubtitle
           ) {
             Menu {
@@ -68,7 +67,7 @@ struct CleanerView: View {
 
       CleanupActionBar(pendingExecutionMode: $pendingExecutionMode)
     }
-    .navigationTitle("安全清理")
+    .navigationTitle("進階規則")
     .sheet(item: $pendingExecutionMode) { executionMode in
       CleanupConfirmationSheet(executionMode: executionMode)
         .environmentObject(model)
@@ -78,9 +77,9 @@ struct CleanerView: View {
   private var headerSubtitle: String {
     switch model.cleanupMode {
     case .system:
-      return "依風險逐層擴大 macOS 白名單候選；所選等級會直接顯示對應範圍，掃描後仍由你逐項確認。"
+      return "依等級選擇要掃描的資料；結果需逐項勾選。"
     case .generalLocation:
-      return "可重用儲存空間總覽的容量報告快速建立候選，也可選擇重新完整掃描；._ 檔仍會即時驗證 AppleDouble 內容與同名主檔。"
+      return "選擇沿用既有容量報告，或重新掃描整個位置。"
     }
   }
 
@@ -127,7 +126,7 @@ private struct CleanupScanActionButtons: View {
         Label("開始掃描", systemImage: "sparkles.rectangle.stack")
       }
       .buttonStyle(LensButtonStyle(kind: .primary, compact: compact))
-      .help("第一次掃描會建立目前等級的清理索引；完成後可選補充掃描或完整重新掃描。")
+      .help("掃描目前等級包含的資料；不會移除檔案。")
       .disabled(scanDisabled)
     }
   }
@@ -206,7 +205,7 @@ private struct CleanupTargetStrip: View {
   private var modeExplanation: String {
     switch model.cleanupMode {
     case .system:
-      return "只檢查 macOS 白名單候選；CloudKit、VM、快照與系統資料庫仍永久封鎖。"
+      return "只檢查所選等級允許的項目；雲端同步、虛擬機、快照與系統資料庫不列入清理。"
     case .generalLocation:
       if model.cleanupPrioritizesExternalAppleDouble {
         let recycleNote =
@@ -214,7 +213,7 @@ private struct CleanupTargetStrip: View {
           ? "；遠端 #recycle 由 NAS 管理並整棵略過"
           : ""
         return
-          "非本機儲存會提高可驗證 metadata-only ._ 檔的清理優先級；resource fork、未知 payload、package／symlink companion 與格式不明項目仍只供檢視\(recycleNote)。"
+          "此位置會較早列出已驗證、不含資源分支的 ._ 側邊檔；含資源分支、未知內容或格式不明的檔案只供檢視\(recycleNote)。"
       }
       return "只找精確命名的 Finder、Windows 與 AppleDouble 中繼資料；._ 檔不會只憑名稱判定，也不跟隨符號連結。"
     }
@@ -276,7 +275,7 @@ private struct CleanupScanSourceSelector: View {
         VStack(alignment: .leading, spacing: 4) {
           Text("選擇候選資料來源")
             .font(.headline)
-          Text("容量報告可以省掉再次遞迴發現整棵 NAS；已掃描過的清理規則也會建立可重用索引，切換等級時只補掃新增範圍。")
+          Text("快速模式沿用既有容量報告的資料夾位置；完整模式重新讀取整個目標。")
             .font(.caption)
             .foregroundStyle(.secondary)
         }
@@ -320,12 +319,12 @@ private struct CleanupScanSourceSelector: View {
 
         if model.cleanupScanSource == .existingStorageReport {
           Text(
-            "快速模式不會把 Markdown 當成刪除授權：報告沒有逐一列出所有普通檔案，所以 App 仍會對已知資料夾做第一層檔名查找。掃過的規則會保存索引，完成清理後也只標記受影響資料夾待刷新；執行前仍做最後一次路徑與型別重驗證。"
+            "快速模式可能漏掉容量報告建立後新增的整個資料夾；若目標有這類變動，請選完整模式。候選仍會依目前檔案狀態驗證。"
           )
           .font(.caption2)
           .foregroundStyle(.tertiary)
         } else {
-          Text("完整模式維持原本行為，直接重新遞迴列舉目標檔案系統；資料在容量掃描後有大量變動時，建議使用這個模式。")
+          Text("資料夾在上次容量掃描後有新增或大量變動時，請選完整模式。")
             .font(.caption2)
             .foregroundStyle(.tertiary)
         }
@@ -416,9 +415,9 @@ private struct CleanupProfileSelector: View {
   private var selectorSubtitle: String {
     switch model.cleanupMode {
     case .system:
-      return "五個等級逐層增加 macOS 白名單候選；超激進的高影響範圍需明確開啟，自定義可逐類調整。"
+      return "等級越高，檢查的資料類型越多；備份、垃圾桶及系統管理項目需另外開啟。"
     case .generalLocation:
-      return "五個等級逐層加入不同中繼資料類型；一般預設等級不以容量過濾小型隱藏檔。"
+      return "等級越高，檢查的隱藏顯示資料類型越多；預設不因檔案小就略過。"
     }
   }
 }
@@ -496,7 +495,7 @@ private struct CleanupProfileSummaryStrip: View {
           HStack {
             Spacer()
             if model.cleanupMode == .system {
-              Button("在設定中檢視安全邊界") {
+              Button("查看清理限制") {
                 model.destination = .settings
               }
               .buttonStyle(LensButtonStyle(kind: .quiet, compact: true))
@@ -521,9 +520,6 @@ private struct CleanupProfileSummaryStrip: View {
         }
       }
 
-      if model.cleanupMode == .system {
-        CleanupResearchReferenceNote()
-      }
     }
     .padding(12)
     .background(LensTheme.recessed(colorScheme), in: RoundedRectangle(cornerRadius: 12))
@@ -560,18 +556,16 @@ private struct CleanupProfileSummaryStrip: View {
     if model.cleanupMode == .system {
       return [
         ("checkmark.circle", "候選預設不勾選"),
-        ("trash", "一般項目進 Finder 可見垃圾桶"),
         ("trash.slash", "廢紙簍只能永久清空"),
         ("terminal", "官方命令另行確認"),
-        ("doc.badge.gearshape", "每次操作寫入 JSON"),
+        ("doc.badge.gearshape", "每次操作都會留下紀錄"),
       ]
     }
     return [
       ("checkmark.circle", "候選預設不勾選"),
-      ("trash", "精確項目進 Finder 可見垃圾桶"),
       ("exclamationmark.triangle", "高風險項目只可逐項選取"),
       ("link", "不跟隨符號連結"),
-      ("doc.text.magnifyingglass", "解析 AppleDouble header"),
+      ("doc.text.magnifyingglass", "核對 ._ 側邊檔內容"),
       ("app.badge.checkmark", "不進入 App 與套件"),
     ]
   }
@@ -579,10 +573,10 @@ private struct CleanupProfileSummaryStrip: View {
   private var safetyBoundaryText: String {
     if model.cleanupMode == .system {
       return
-        "CloudKit、VM、Preboot、Spotlight、snapshot 與系統資料庫永久禁止直接清理。即使開啟廢紙簍，也只處理目前 UID 的精確直接子項；其他 UID、NAS #recycle 與網路卷宗不進入候選。"
+        "雲端同步、虛擬機、系統啟動資料、Spotlight 搜尋索引、快照與系統資料庫不列入清理。垃圾桶清理只處理本次列出的目前使用者項目。"
     }
     return
-      "一般位置模式不會把所有隱藏檔都當垃圾；.env、.gitignore、設定檔與一般使用者 dotfile 永遠不會只因名稱以句點開頭而成為候選。含資源分支、未知 entry、格式不明、package 或符號連結 companion 的 ._ 檔仍只供檢視。Spotlight 與 FSEvents 只在 L5 顯示為高風險逐項候選，不會被批次全選；卷宗垃圾桶、文件版本與其他 marker 仍不可選。"
+      "一般隱藏文件與設定檔不會只因名稱以句點開頭就列為候選。含資源分支、未知內容或格式不明的 ._ 側邊檔只供檢視。Spotlight 搜尋索引與檔案變更紀錄須在最高等級逐項選取；整個磁碟垃圾桶與文件版本不可選。"
   }
 }
 
@@ -659,7 +653,7 @@ private struct UltraAggressiveOptionsStrip: View {
       }
       .disabled(model.isScanningCleanup || model.isCleaning)
 
-      Text("這三個範圍不會只因選到 L5 就自動掃描；開啟後仍只建立候選，項目預設不勾選。廢紙簍需再次確認且只能永久清空。")
+      Text("這三類資料需另外開啟。備份與垃圾桶結果需逐項選取；系統管理項目只供檢視。")
         .font(.caption2)
         .foregroundStyle(.tertiary)
         .fixedSize(horizontal: false, vertical: true)
@@ -678,9 +672,9 @@ private struct UltraAggressiveOptionsStrip: View {
   private func status(for scope: CleanupScope) -> String {
     switch scope {
     case .highImpactUserData: return "備份、郵件下載與 Xcode 封存；逐項手動選取"
-    case .trashBins: return "目前 UID 垃圾桶；只能在二次確認後永久清空"
+    case .trashBins: return "目前使用者的垃圾桶；再次確認後永久清空"
     case .systemManagedReview: return "系統管理項目；只提供容量與位置檢視"
-    default: return "依白名單建立候選"
+    default: return ""
     }
   }
 }
@@ -723,10 +717,12 @@ private struct CleanupProfileScopeGrid: View {
               VStack(alignment: .leading, spacing: 2) {
                 Text(scope.title)
                   .font(.caption.weight(.semibold))
-                Text(behavior(for: scope))
-                  .font(.caption2)
-                  .foregroundStyle(.secondary)
-                  .lineLimit(2)
+                if !behavior(for: scope).isEmpty {
+                  Text(behavior(for: scope))
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(2)
+                }
               }
             }
             .padding(8)
@@ -753,22 +749,8 @@ private struct CleanupProfileScopeGrid: View {
       return "高影響 · 逐項確認"
     case .appLeftovers: return "嚴格 App 身分比對"
     case .brokenPreferences: return "只列可證明損壞"
-    default: return "白名單候選"
+    default: return ""
     }
-  }
-}
-
-private struct CleanupResearchReferenceNote: View {
-  var body: some View {
-    HStack(alignment: .top, spacing: 7) {
-      Image(systemName: "book.closed")
-        .foregroundStyle(.tertiary)
-      Text("部分垃圾判定規則參考 MacSai 開源實作（BSD 3-Clause）。")
-        .fixedSize(horizontal: false, vertical: true)
-    }
-    .font(.caption2)
-    .foregroundStyle(.tertiary)
-    .help("掃描、風險分級、候選選取與刪除前重驗證均由 MacStorageLens 自行實作。")
   }
 }
 
@@ -1052,7 +1034,7 @@ private struct CleanupScanProgressCard: View {
         }
         ProgressView(value: progress.fraction)
           .tint(LensTheme.accent)
-        Text("目前只讀取白名單候選的容量與路徑；這個階段不會清理任何資料。")
+        Text("正在掃描清理項目，不會移除檔案。")
           .font(.caption)
           .foregroundStyle(.secondary)
       }
@@ -1078,9 +1060,6 @@ private struct CleanupEmptyState: View {
         VStack(alignment: .leading, spacing: 8) {
           Text("尚未依「\(model.cleanupProfile.rawValue)」掃描")
             .font(.title3.weight(.semibold))
-          Text(emptyExplanation)
-            .font(.callout)
-            .foregroundStyle(.secondary)
           CleanupScanActionButtons(compact: true)
         }
         Spacer()
@@ -1089,19 +1068,6 @@ private struct CleanupEmptyState: View {
     }
   }
 
-  private var emptyExplanation: String {
-    switch model.cleanupMode {
-    case .system:
-      return "掃描會在目前 Mac 上直接檢查通用白名單與已安裝工具，不依賴某一台電腦固定存在的八個路徑。"
-    case .generalLocation:
-      if model.cleanupScanSource == .existingStorageReport {
-        return
-          "快速模式會沿用「\(model.selectedScanTarget.displayName)」既有容量報告的資料夾索引，只對命中規則的檔名做即時驗證；不會再完整遞迴發現整棵資料樹。"
-      }
-      return
-        "完整模式會重新遞迴檢查「\(model.selectedScanTarget.displayName)」內精確命名的隱藏中繼資料；不會列出一般隱藏文件、App 套件內容或符號連結外部目標。"
-    }
-  }
 }
 
 private struct CleanupNoResultsState: View {
@@ -1228,11 +1194,11 @@ private struct CleanupResultSummary: View {
     if result.mode == .generalLocation {
       let source =
         result.scanSource == .existingStorageReport
-        ? "既有容量報告只作導航索引；候選已向目前檔案系統驗證"
-        : "已重新遞迴掃描目前檔案系統"
-      return "清理根目錄：\(result.target.path)。\(source)，執行前還會再次驗證。"
+        ? "沿用既有容量報告，候選已依目前檔案狀態驗證"
+        : "已重新掃描目前檔案系統"
+      return "掃描位置：\(result.target.path)。\(source)。"
     }
-    return "容量是配置區塊估計；重疊候選已排除，但不承諾等於 APFS 最終回收量。"
+    return "顯示容量是檔案占用量的估計，實際可用空間可能不同。"
   }
 }
 
@@ -1331,7 +1297,7 @@ private struct CleanupCandidateRow: View {
       candidate.requiresManualSelection
       ? "\n選取方式：只可逐項勾選，不會被任何全選或分類批次操作自動選取。"
       : ""
-    return "\(candidate.reason)\n清除後：\(candidate.impact)\n不建議清除時：\(candidate.recovery)\(manualNote)"
+    return "\(candidate.reason)\n清除後：\(candidate.impact)\n還原或處理：\(candidate.recovery)\(manualNote)"
   }
 
   var body: some View {
@@ -1580,8 +1546,7 @@ private struct CleanupActionBar: View {
     if !selected.allSatisfy(\.supportsFinderVisibleTrash) {
       return "目前選取內容含只能直接清理的官方命令、廢紙簍內容或舊版隱藏垃圾桶殘留；請改用『直接徹底刪除』。"
     }
-    return
-      "只使用 Finder 的系統垃圾桶語意。點號或 hidden 項目會先改成可見名稱；只有目的地名稱非點號、hidden=false，且位於 Finder 管理的垃圾桶直接子項時才回報成功；成功後立即要求 Finder 選取該項目。"
+    return "所選項目會移到 Finder 垃圾桶；清空前仍占用磁碟空間。"
   }
 
   private var directDeleteHelp: String {
@@ -1590,18 +1555,17 @@ private struct CleanupActionBar: View {
     }
     if model.cleanupTargetIsRemote {
       return
-        "直接向 \(model.cleanupTargetFilesystemDisplayName) 遠端掛載刪除精確驗證來源，不經 Finder 垃圾桶。NAS／伺服器若另有 recycle bin、snapshot 或版本保護，實際保留與空間釋放由伺服器設定決定。"
+        "所選項目會直接從 \(model.cleanupTargetFilesystemDisplayName) 刪除，無法從 Finder 還原；伺服器是否保留副本由 NAS 設定決定。"
     }
     if trashBinCount > 0 {
       return
-        "永久移除掃描結果明列的 ~/.Trash 與本機可寫外接卷宗 .Trashes/<目前 UID> 直接子項；不會再搬進另一個垃圾桶，也不處理其他 UID、整棵 .Trashes、NAS #recycle 或網路卷宗。"
+        "所選項目會直接永久刪除，無法從 Finder 還原；其中垃圾桶項目只處理本次掃描列出的內容。"
     }
-    return
-      "直接從每個精確驗證來源永久移除，不經任何垃圾桶，也不建立隱藏暫存、no_log 或其他標記。一般候選會重新驗證白名單路徑；官方管理命令只使用固定 executable 與參數。"
+    return "所選項目會直接刪除，不經垃圾桶，無法從 Finder 還原。"
   }
 
   private var actionSummary: String {
-    if selected.isEmpty { return "先逐項勾選；掃描等級不會替你做決定。" }
+    if selected.isEmpty { return "請先勾選要清理的項目。" }
     if !model.cleanupDirectDeletionAvailableForTarget {
       return "目前目標是唯讀檔案系統，清理動作已停用。"
     }
@@ -1613,7 +1577,7 @@ private struct CleanupActionBar: View {
       return "含 \(managedCount) 個官方管理命令；它們只會在『直接徹底刪除』流程中執行，Finder 可見垃圾桶按鈕會停用。"
     }
     if trashBinCount > 0 {
-      return "含 \(trashBinCount) 個廢紙簍分類；只會永久移除掃描時列出的目前使用者直接子項，不會再搬進另一個垃圾桶。"
+      return "所選項目只能直接刪除；其中 \(trashBinCount) 個廢紙簍分類只處理本次掃描列出的目前使用者項目。"
     }
     if selected.contains(where: \.requiresDirectDeletion) {
       return "所選內容含舊版不可見垃圾桶殘留，只能逐項直接徹底刪除；不會再搬進另一個垃圾桶。"
@@ -1628,9 +1592,9 @@ private struct CleanupActionBar: View {
       return "含 \(manualOnlyCount) 個只可逐項選取的高風險項目；執行前會再次確認。"
     }
     if selected.contains(where: { !$0.matchedPaths.isEmpty }) {
-      return "可選 Finder 可見垃圾桶或直接徹底刪除；兩者都會先重新驗證每個精確路徑。"
+      return "選擇移到 Finder 垃圾桶，或直接永久刪除。"
     }
-    return "可選 Finder 可見垃圾桶或直接徹底刪除；不會使用任何第三種隱藏中介位置。"
+    return "選擇移到 Finder 垃圾桶，或直接永久刪除。"
   }
 }
 
@@ -1726,10 +1690,12 @@ private struct CleanupConfirmationSheet: View {
             VStack(alignment: .leading, spacing: 4) {
               Text(onlyTrashBinsSelected ? "這會永久清空本次列出的廢紙簍項目" : "這是不經垃圾桶的永久刪除")
                 .font(.callout.weight(.semibold))
-              Text(permanentDeletionExplanation)
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
+              if !permanentDeletionExplanation.isEmpty {
+                Text(permanentDeletionExplanation)
+                  .font(.caption)
+                  .foregroundStyle(.secondary)
+                  .fixedSize(horizontal: false, vertical: true)
+              }
             }
           }
         }
@@ -1765,18 +1731,13 @@ private struct CleanupConfirmationSheet: View {
         .frame(maxHeight: 230)
       }
 
-      Toggle("我已關閉相關 App，並確認目前沒有 Finder 複製、索引、備份或同步工作。", isOn: $acknowledgedAppsClosed)
+      Toggle("已關閉使用這些資料的 App，並確認此位置沒有進行複製、備份或同步。", isOn: $acknowledgedAppsClosed)
         .toggleStyle(.checkbox)
 
       if needsElevatedAcknowledgement {
-        Toggle(
-          executionMode == .forceDelete
-            ? "我了解高影響項目可能失去歷史資料或 Mac 專用 metadata。"
-            : "我了解高影響項目可能失去歷史資料或 Mac 專用 metadata。",
-          isOn: $acknowledgedHighImpact
-        )
-        .toggleStyle(.checkbox)
-        .foregroundStyle(LensTheme.clay)
+        Toggle("已確認所選項目的歷史資料或 Mac 專用資訊可能遺失。", isOn: $acknowledgedHighImpact)
+          .toggleStyle(.checkbox)
+          .foregroundStyle(LensTheme.clay)
       }
 
       if needsManagedVolumeMetadataAcknowledgement {
@@ -1819,21 +1780,7 @@ private struct CleanupConfirmationSheet: View {
   }
 
   private var summaryText: String {
-    let base =
-      "將處理 \(selected.count) 個明確選取的分類，共 \(selectedItemCount) 個項目，估計涉及 \(model.selectedCleanupBytes.formattedBytes)。"
-    if executionMode == .forceDelete {
-      if model.cleanupTargetIsRemote {
-        return base
-          + " 這是 \(model.cleanupTargetFilesystemDisplayName) 網路卷宗：刪除不經 Finder 垃圾桶；伺服器端 recycle bin／snapshot 是否保留資料由 NAS 設定決定。"
-      }
-      return base
-        + (includesTrashBins
-          ? " 所選廢紙簍候選只會刪除掃描時列出的目前使用者直接子項；垃圾桶根目錄、其他 UID、NAS #recycle 與網路卷宗不在操作範圍。"
-          : "")
-        + (includesExternalVolumeDirectDeletion
-          ? " 外接卷宗永久操作會留在 MacStorageLens 本身的 removable-volume 權限責任鏈中，不會啟動獨立 root shell。" : "")
-    }
-    return base + " 項目只會交給 Finder 可見垃圾桶；清空 Finder 垃圾桶前仍占用原卷宗空間。"
+    "將處理 \(selected.count) 個選取的分類，共 \(selectedItemCount) 個項目，估計涉及 \(model.selectedCleanupBytes.formattedBytes)。"
   }
 
   private var confirmationTitle: String {
@@ -1853,55 +1800,38 @@ private struct CleanupConfirmationSheet: View {
   }
 
   private var permanentDeletionAcknowledgement: String {
-    if model.cleanupTargetIsRemote {
-      return
-        "我了解『直接徹底刪除』會對目前的 \(model.cleanupTargetFilesystemDisplayName) 遠端掛載送出刪除，不經 Finder 垃圾桶、無法由 Finder 還原；NAS／伺服器可能依自己的 recycle bin、snapshot 或版本政策保留資料，MacStorageLens 不會把那種伺服器端保護冒充成 Finder 垃圾桶。"
-    }
-    if includesTrashBins {
-      return
-        "我了解『廢紙簍（永久清空）』會直接永久移除掃描時明列的目前使用者垃圾桶項目，不會再進入另一個垃圾桶、無法由 Finder 還原；新放入垃圾桶但未列在本次候選中的項目不會被刪除，其他 UID 與 NAS #recycle 也不會被處理。"
-    }
-    return
-      "我了解『直接徹底刪除』會在檔案系統層直接永久移除畫面中列出的精確來源，不經任何垃圾桶、無法由 Finder 還原，也不會建立 no_log 或其他隱藏標記；它不是覆寫式安全抹除，並同意完成後重新掃描確認結果。"
+    "我了解所選項目會直接刪除，無法從 Finder 垃圾桶還原。"
   }
 
   private var managedVolumeAcknowledgementText: String {
-    if executionMode == .forceDelete {
-      var effects: [String] = []
-      if includesSpotlight {
-        effects.append("所選 Spotlight 舊索引或舊版隱藏垃圾桶殘留會直接永久刪除；macOS 之後仍可能建立新的同名索引")
-      }
-      if includesFSEvents {
-        effects.append("所選 FSEvents 歷史或舊版隱藏垃圾桶殘留會直接永久刪除；不建立 no_log，macOS 仍可能重新建立")
-      }
-      return "我了解：" + effects.joined(separator: "；") + "。備份或同步工具可能需要重新完整掃描。"
+    var effects: [String] = []
+    if selected.contains(where: { $0.ruleID == .folderSpotlightMetadata }) {
+      effects.append("移除 Spotlight 搜尋索引後，搜尋可能暫時變慢，macOS 可能重建索引")
     }
-    return "我了解 Spotlight 索引可能完整重建，FSEvents 事件歷史會消失，備份或同步工具可能需要重新掃描；Finder 可見垃圾桶中的項目在清空前仍占用原卷宗空間。"
+    if selected.contains(where: { $0.ruleID == .folderFSEventsMetadata }) {
+      effects.append("移除檔案變更紀錄後，備份或同步工具可能需要完整重新掃描")
+    }
+    if selected.contains(where: {
+      $0.ruleID == .folderLegacySpotlightTrashResidue
+        || $0.ruleID == .folderLegacyFSEventsTrashResidue
+    }) {
+      effects.append("垃圾桶中的舊索引或變更紀錄副本會永久刪除，無法還原")
+    }
+    return "我了解：" + effects.joined(separator: "；") + "。"
   }
 
   private var permanentDeletionExplanation: String {
-    if model.cleanupTargetIsRemote {
-      return
-        "App 會在規則白名單、父路徑、符號連結與目前檔案身分重新驗證後，直接對 \(model.cleanupTargetFilesystemDisplayName) 掛載使用 Foundation removeItem。這不會建立或使用 Finder 垃圾桶；客戶端確認來源路徑消失後才記錄完成，但 NAS 是否把刪除內容保留在伺服器端 recycle bin、snapshot 或版本歷史中，MacStorageLens 無法替伺服器保證。"
-    }
+    var details: [String] = []
     if includesTrashBins {
-      return
-        "App 會重新驗證垃圾桶根目錄必須是 ~/.Trash，或本機可寫外接卷宗的 .Trashes/<目前 UID>，再逐一驗證並永久移除畫面列出的直接子項。根目錄本身、掃描後新增的項目、其他使用者目錄、整棵 .Trashes、NAS #recycle 與網路卷宗都不會被清空。"
+      details.append("所選項目會直接刪除。其中垃圾桶項目只處理本次掃描列出的目前使用者內容；掃描後新增的項目不在此次範圍。")
     }
-    if includesExternalVolumeDirectDeletion {
-      var policyEffects: [String] = []
-      if includesSpotlight {
-        policyEffects.append("Spotlight：只刪除畫面中逐項選取且重新驗證過的精確路徑；不掃描或清空整個垃圾桶")
-      }
-      if includesFSEvents {
-        policyEffects.append("FSEvents：只刪除畫面中逐項選取且重新驗證過的精確路徑；不建立 no_log 或其他隱藏目錄")
-      }
-      return
-        "App 會在永久操作前後驗證根目錄、精確名稱、父路徑、符號連結、裝置與 inode，然後直接呼叫 Foundation removeItem 移除來源。所有操作留在 MacStorageLens 程序中；只有本機、非內置、可寫且不是 Time Machine 目的地的 /Volumes 根層卷宗可進入。網路卷宗、磁碟映像、Macintosh HD 與其他任意路徑一律拒絕。"
-        + (policyEffects.isEmpty ? "" : "\n" + policyEffects.joined(separator: "\n"))
+    if model.cleanupTargetIsRemote {
+      details.append("NAS 可能另有回收筒、快照或版本紀錄；實際是否保留副本由伺服器設定決定。")
     }
-    return
-      "所選路徑會在規則白名單、父路徑、符號連結與目前檔案身分重新驗證後，直接由 Foundation removeItem 永久移除；官方套件管理器候選則只執行畫面明列的固定命令與參數。任何失敗都會如實寫入紀錄。"
+    if selected.contains(where: { $0.action == .managedCommand }) {
+      details.append("將執行畫面列出的套件管理器清理命令。")
+    }
+    return details.joined(separator: "\n")
   }
 
   private func rowActionTitle(_ candidate: CleanupCandidate) -> String {
@@ -2040,21 +1970,21 @@ private func cleanupScopeBadgeTint(_ scope: CleanupScope) -> Color {
 private func shortProfileSummary(_ profile: CleanupProfile, mode: CleanupMode) -> String {
   if mode == .generalLocation {
     switch profile {
-    case .ultraConservative: return "找 .DS_Store 與驗證過的 ._.DS_Store。"
-    case .conservative: return "加入 Windows metadata 與其驗證過的 ._ 側邊檔。"
-    case .balanced: return "加入 __MACOSX 與安全的孤立 ._ metadata。"
-    case .aggressive: return "加入配對中、無資源分支的 ._ metadata。"
+    case .ultraConservative: return "Finder 顯示資訊；清除後顯示方式可能重設。"
+    case .conservative: return "加入 Windows 縮圖與資料夾外觀檔。"
+    case .balanced: return "加入 __MACOSX 與主檔已不存在的 ._ 側邊檔。"
+    case .aggressive: return "加入主檔仍存在、不含資源分支的 ._ 側邊檔。"
     case .ultraAggressive:
-      return "敏感 ._ 與舊式 metadata 僅檢視；Spotlight／FSEvents 可警告後逐項選取。"
+      return "含資源分支的 ._ 僅檢視；索引與變更紀錄可逐項選取。"
     case .custom: return "自行選類型與最低容量。"
     }
   }
   switch profile {
-  case .ultraConservative: return "第三方標準快取；最低 20 MiB。"
-  case .conservative: return "加入 Apple／群組與純繪圖快取。"
-  case .balanced: return "加入 Xcode、IDE／AI 與套件管理器精確快取。"
-  case .aggressive: return "加入嚴格 App 殘留、損壞 plist 與使用者 logs。"
-  case .ultraAggressive: return "加入舊安裝檔；高影響資料、廢紙簍與系統檢視另行開啟。"
+  case .ultraConservative: return "第三方 App 的標準快取；最低 20 MiB。"
+  case .conservative: return "加入 Apple、共用 App 與繪圖快取。"
+  case .balanced: return "加入開發工具與套件下載快取。"
+  case .aggressive: return "加入診斷日誌、App 殘留與損壞的偏好設定。"
+  case .ultraAggressive: return "加入舊安裝檔；備份與垃圾桶另行開啟。"
   case .custom: return "自行選類型與最低容量。"
   }
 }

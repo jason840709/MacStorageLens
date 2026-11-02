@@ -6,7 +6,7 @@ enum ScanTargetPicker {
     let panel = NSOpenPanel()
     panel.title = "選擇要掃描的磁碟"
     panel.prompt = "選擇磁碟"
-    panel.message = "可選擇已掛載的外接 APFS、exFAT、NTFS 或其他磁碟。掃描只讀取檔案與容量 metadata。"
+    panel.message = "可選擇已掛載的外接磁碟。掃描只讀取容量與檔案資訊。"
     panel.directoryURL = URL(fileURLWithPath: "/Volumes", isDirectory: true)
     panel.canChooseFiles = false
     panel.canChooseDirectories = true
@@ -24,7 +24,7 @@ enum ScanTargetPicker {
     let panel = NSOpenPanel()
     panel.title = "選擇要掃描的資料夾"
     panel.prompt = "選擇資料夾"
-    panel.message = "資料夾模式只把所選路徑畫成資料樹；所在磁碟的剩餘空間會另外顯示，不會冒充資料夾子項目。"
+    panel.message = "只顯示所選資料夾的內容；所在磁碟的剩餘空間會另外顯示。"
     panel.canChooseFiles = false
     panel.canChooseDirectories = true
     panel.allowsMultipleSelection = false

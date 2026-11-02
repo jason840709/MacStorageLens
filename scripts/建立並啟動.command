@@ -5,8 +5,8 @@ set -euo pipefail
 ROOT="$(cd -P "$(dirname "$0")/.." && pwd -P)"
 cd "$ROOT"
 
-APP_VERSION="1.8.0"
-APP_BUILD="35"
+APP_VERSION="2.0.0"
+APP_BUILD="36"
 SCANNER_VERSION="2.5.4"
 BUNDLE_ID="local.macstoragelens.app"
 
@@ -141,13 +141,13 @@ cat > "$APP/Contents/Info.plist" <<PLIST
     <key>NSHumanReadableCopyright</key>
     <string>Copyright © 2026 Jason Chen</string>
     <key>NSDocumentsFolderUsageDescription</key>
-    <string>用於掃描或匯入你選擇的資料夾與儲存空間報告。</string>
+    <string>用於分析你選擇的檔案與資料夾容量、匯入掃描報告，以及執行你啟動的清理工作。</string>
     <key>NSDownloadsFolderUsageDescription</key>
-    <string>用於掃描或匯入你選擇的資料夾與儲存空間報告。</string>
+    <string>用於分析你選擇的檔案與資料夾容量、匯入掃描報告，以及執行你啟動的清理工作。</string>
     <key>NSRemovableVolumesUsageDescription</key>
-    <string>用於掃描、移動到垃圾桶或永久清除你明確選擇之外接磁碟中繼資料。</string>
+    <string>用於分析外接磁碟容量，以及移到垃圾桶或直接刪除你在清理功能中確認的項目。</string>
     <key>NSDesktopFolderUsageDescription</key>
-    <string>用於掃描或匯入你選擇的資料夾與儲存空間報告。</string>
+    <string>用於分析你選擇的檔案與資料夾容量、匯入掃描報告，以及執行你啟動的清理工作。</string>
 </dict>
 </plist>
 PLIST

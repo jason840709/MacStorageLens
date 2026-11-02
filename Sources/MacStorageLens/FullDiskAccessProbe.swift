@@ -25,7 +25,7 @@ struct FullDiskAccessProbeResult: Hashable, Sendable {
   static let checking = FullDiskAccessProbeResult(
     state: .checking,
     path: nil,
-    detail: "正在由 MacStorageLens App 本身核對受保護路徑…",
+    detail: "正在檢查完整磁碟存取權…",
     checkedAt: nil
   )
 
@@ -44,7 +44,7 @@ struct FullDiskAccessProbeResult: Hashable, Sendable {
     FullDiskAccessProbeResult(
       state: .notApplicable,
       path: nil,
-      detail: "外接磁碟與指定資料夾只讀取使用者明確選擇的位置；不需要探測 Mac 的受保護使用者資料。",
+      detail: "這次掃描使用所選位置的讀取權限，因此沒有另外檢查郵件、訊息等受保護系統資料。",
       checkedAt: Date()
     )
   }
@@ -90,7 +90,7 @@ enum FullDiskAccessProbe {
         return FullDiskAccessProbeResult(
           state: .available,
           path: candidate.path,
-          detail: "MacStorageLens App 本身可讀取受 TCC 保護的測試路徑。",
+          detail: "App 可讀取受保護資料。",
           checkedAt: Date()
         )
       } catch {
@@ -110,7 +110,7 @@ enum FullDiskAccessProbe {
         state: .blocked,
         path: failure.0.path,
         detail:
-          "App 直接讀取被 macOS 拒絕（\(failure.1.domain) \(failure.1.code)）。若剛完成授權，請完全退出 MacStorageLens 後重新開啟。",
+          "macOS 拒絕讀取受保護資料。若剛完成授權，請完全退出 MacStorageLens 後重新開啟。",
         checkedAt: Date()
       )
     }
@@ -120,7 +120,7 @@ enum FullDiskAccessProbe {
         state: .indeterminate,
         path: failure.0.path,
         detail:
-          "受保護路徑探針回傳非權限型錯誤（\(failure.1.domain) \(failure.1.code)），無法可靠判定完整磁碟存取。",
+          "檢查時發生錯誤，無法判定完整磁碟存取權。",
         checkedAt: Date()
       )
     }

@@ -15,8 +15,8 @@ enum AppMetadata {
   static let developer = "Jason Chen"
   static let developmentAssistant = "GPT‑6.1 SOL（Codex 本機）"
   static let scannerVersion = "2.5.4"
-  static let fallbackVersion = "1.8.0"
-  static let fallbackBuild = "35"
+  static let fallbackVersion = "2.0.0"
+  static let fallbackBuild = "36"
   static let copyright = "Copyright © 2026 Jason Chen"
 
   static var version: String {
@@ -43,6 +43,12 @@ enum AppMetadata {
   static var hasStableCodeSigningIdentity: Bool { codeSigningMode == "identity" }
 
   static let releases: [AppRelease] = [
+    AppRelease(
+      version: "2.0.0",
+      title: "一鍵清理、檔案整理與介面說明更新",
+      summary:
+        "重做安全清理頁面：一鍵重新檢查並清除已知舊快取與診斷，保留需要使用者判斷的資料。新增專案建置資料、安裝檔、大型與舊檔、完整內容重複比對，以及程式與關聯資料分開整理。提供保留清單、內容檢視、停止與清理紀錄；清理前重新核對檔案，跨視窗舊預覽會失效。直接清除量與移到垃圾桶的容量分開呈現。重新檢查全 App 文字，刪除空泛與重複說明，並修正報告容量時間、權限、Terminal 停止方式及刪除範圍的說明。公開清理邏輯、研究對照與維護文件。"
+    ),
     AppRelease(
       version: "1.8.0",
       title: "本機資料樹加速與清理保護",

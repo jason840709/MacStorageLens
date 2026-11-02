@@ -14,7 +14,7 @@ enum ScannerLauncherError: LocalizedError {
   var errorDescription: String? {
     switch self {
     case .resourceMissing:
-      return "找不到內附的唯讀掃描器。請確認 App 的 Resources 目錄完整。"
+      return "App 缺少內附掃描器，請重新安裝完整的 App 後再掃描。"
     case .unableToCreateSession(let message):
       return "無法建立掃描工作階段：\(message)"
     case .authorizationCancelled:
@@ -24,7 +24,7 @@ enum ScannerLauncherError: LocalizedError {
     case .scanFailed(let message):
       return "完整掃描失敗：\(message)"
     case .missingCompletedReport:
-      return "掃描程序已結束，但沒有找到包含完成旗標的新報告。"
+      return "掃描程序已結束，但沒有找到可載入的完整報告。請查看診斷資料，或重新掃描。"
     }
   }
 }
@@ -340,7 +340,7 @@ final class ScanSession {
       : > "$ERR"
       : > "$RESULT"
 
-      printf 'MLS_PROGRESS\tversion=1\tepoch=%s\tphase=tcc_overlay\tstatus=active\tstage=App 權限核對\tmessage=正在由 MacStorageLens 的程序鏈核對受保護路徑…\tdetail=這個步驟在管理員授權前執行，用來分開判讀 App TCC 與 root 權限。\tpath=%s\n' \
+      printf 'MLS_PROGRESS\tversion=1\tepoch=%s\tphase=tcc_overlay\tstatus=active\tstage=讀取受保護資料\tmessage=正在讀取 App 已獲授權的受保護資料…\tdetail=完成後，macOS 會要求管理員授權以掃描系統其他位置。\tpath=%s\n' \
         "$(/bin/date +%s)" "$ROOT" >> "$PROGRESS"
 
       # The App process itself ran this probe synchronously immediately before
@@ -350,15 +350,15 @@ final class ScanSession {
 
       if [[ "$probe" != "LIKELY_AVAILABLE" ]]; then
         overlay_status="APP_FDA_INDETERMINATE"
-        message="無法自動判定 App 的完整磁碟存取。"
-        detail="找不到可用的受保護測試路徑；管理員掃描仍可繼續，但資料覆蓋可能受限。"
+        message="無法確認 App 的完整磁碟存取權。"
+        detail="管理員掃描仍可繼續，但受保護資料可能不完整。"
         if [[ "$probe" == "LIKELY_MISSING_OR_TCC_BLOCKED" ]]; then
           overlay_status="APP_FDA_BLOCKED"
-          message="App 權限探針遭 macOS 拒絕。"
-          detail="不執行耗時的 App 覆蓋掃描；請完全退出 App、核對完整磁碟存取後再試。"
+          message="macOS 拒絕 App 讀取受保護資料。"
+          detail="請完全退出 App，確認完整磁碟存取權後重新開啟。"
         fi
         write_result "$overlay_status" 0 UNKNOWN
-        printf 'MLS_PROGRESS\tversion=1\tepoch=%s\tphase=tcc_overlay\tstatus=complete\tstage=App 權限核對\tmessage=%s\tdetail=%s\tpath=%s\n' \
+        printf 'MLS_PROGRESS\tversion=1\tepoch=%s\tphase=tcc_overlay\tstatus=complete\tstage=讀取受保護資料\tmessage=%s\tdetail=%s\tpath=%s\n' \
           "$(/bin/date +%s)" "$message" "$detail" "$ROOT" >> "$PROGRESS"
         exit 0
       fi
@@ -405,13 +405,13 @@ final class ScanSession {
       write_result "$overlay_status" "$du_status" "$tree_kib"
 
       if [[ "$overlay_status" == "READY" ]]; then
-        message="受保護使用者資料覆蓋已完成。"
+        message="受保護資料已讀取。"
         detail="接下來會顯示管理員授權對話框。"
       else
-        message="App 權限覆蓋沒有產生可核對的根節點。"
-        detail="管理員掃描仍可繼續，但受保護路徑會保留為診斷。"
+        message="無法確認受保護資料是否已納入掃描。"
+        detail="管理員掃描仍可繼續，但受保護資料可能不完整。"
       fi
-      printf 'MLS_PROGRESS\tversion=1\tepoch=%s\tphase=tcc_overlay\tstatus=complete\tstage=App 權限預掃描\tmessage=%s\tdetail=%s\tpath=%s\n' \
+      printf 'MLS_PROGRESS\tversion=1\tepoch=%s\tphase=tcc_overlay\tstatus=complete\tstage=讀取受保護資料\tmessage=%s\tdetail=%s\tpath=%s\n' \
         "$(/bin/date +%s)" "$message" "$detail" "$ROOT" >> "$PROGRESS"
       exit 0
       """
@@ -641,7 +641,7 @@ final class ScanSession {
       finishWithError(
         ScannerLauncherError.scanTimedOut(
           lastStructuredMessage()
-            ?? "掃描核心長時間沒有輸出，已由自我檢查安全中止；既有完成報告仍保留。"
+            ?? "掃描器長時間沒有回報，App 已停止本次掃描；既有完成報告仍保留。"
         )
       )
       return
@@ -1108,8 +1108,8 @@ final class ScanSession {
     let fallbackMessage: String
     let fallbackStage: String
     if mode == .administrator && !authorizationStarted {
-      fallbackMessage = "正在以 App 權限核對並建立受保護使用者資料覆蓋…"
-      fallbackStage = "App 權限預掃描"
+      fallbackMessage = "正在讀取 App 已獲授權的受保護資料…"
+      fallbackStage = "讀取受保護資料"
     } else if mode == .administrator && !wrapperStarted {
       fallbackMessage = "等待你完成 macOS 管理員授權…"
       fallbackStage = "授權"
@@ -1122,7 +1122,7 @@ final class ScanSession {
     }
 
     return ScanProgressSnapshot(
-      message: isCancelling ? "正在安全停止掃描…" : (event?.message ?? fallbackMessage),
+      message: isCancelling ? "正在停止掃描…" : (event?.message ?? fallbackMessage),
       detail: event?.detail,
       currentPath: event?.path,
       fraction: lastProgressFraction,
@@ -1176,7 +1176,7 @@ final class ScanSession {
         watchdogCancellationIssued = true
         stateLock.unlock()
         cancel(
-          reason: "掃描已連續 10 分鐘沒有新增目錄節點或階段進展，App 已要求安全中止；只要掃描仍有實質進度，就不受總執行時間限制。"
+          reason: "掃描已連續 10 分鐘沒有新增資料夾或進入下一階段，App 已要求停止掃描；只要仍有這些進展，就不受總執行時間限制。"
         )
         return
       }
@@ -1187,7 +1187,7 @@ final class ScanSession {
       watchdogCancellationIssued = true
       stateLock.unlock()
       cancel(
-        reason: "掃描器已 \(stale) 秒沒有回報心跳，App 已要求安全中止；這通常表示外部磁碟、APFS 工具或檔案系統呼叫沒有回應。"
+        reason: "掃描器已 \(stale) 秒沒有回報進度，App 已要求停止掃描；可能是磁碟或系統查詢沒有回應。"
       )
     }
   }
@@ -1233,7 +1233,9 @@ struct ScannerLauncher {
     let requestedAt = Date()
     guard let resolvedTarget = ScanTargetResolver.resolveMountedTarget(target) else {
       throw ScannerLauncherError.scanFailed(
-        "找不到已掛載的「\(target.displayName)」。請重新插入磁碟，或重新選擇掃描位置。"
+        target.kind == .folder
+          ? "找不到資料夾「\(target.displayName)」，可能已移動或刪除。請重新選擇掃描資料夾。"
+          : "找不到已掛載的「\(target.displayName)」。請重新插入磁碟，或重新選擇掃描位置。"
       )
     }
     let targetResolvedAt = Date()
@@ -1282,7 +1284,9 @@ struct ScannerLauncher {
   func launchInTerminal(target: ScanTarget) throws -> ScanTarget {
     guard let resolvedTarget = ScanTargetResolver.resolveMountedTarget(target) else {
       throw ScannerLauncherError.scanFailed(
-        "找不到已掛載的「\(target.displayName)」。請重新插入磁碟，或重新選擇掃描位置。"
+        target.kind == .folder
+          ? "找不到資料夾「\(target.displayName)」，可能已移動或刪除。請重新選擇掃描資料夾。"
+          : "找不到已掛載的「\(target.displayName)」。請重新插入磁碟，或重新選擇掃描位置。"
       )
     }
     _ = try installScanner()

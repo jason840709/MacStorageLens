@@ -97,7 +97,7 @@ enum ReportParserError: LocalizedError {
   var errorDescription: String? {
     switch self {
     case .invalidReport(let message): return "掃描報告格式無法辨識：\(message)"
-    case .missingSection(let path): return "找不到路徑所屬的資料樹區段：\(path)"
+    case .missingSection(let path): return "無法從報告讀取此位置的資料夾容量：\(path)。請重新掃描此位置。"
     }
   }
 }
@@ -530,7 +530,7 @@ final class ReportParser {
     }
 
     guard !sections.isEmpty else {
-      throw ReportParserError.invalidReport("沒有 DIRECTORY_TREE 區段")
+      throw ReportParserError.invalidReport("報告缺少資料夾容量紀錄。")
     }
 
     if summary.targetPath.isEmpty {
@@ -776,7 +776,7 @@ final class ReportParser {
     }
 
     guard foundRoot else {
-      throw ReportParserError.invalidReport("報告缺少清理目標的 DIRECTORY_TREE 根節點：\(rootPath)")
+      throw ReportParserError.invalidReport("報告沒有記錄清理目標的資料夾：\(rootPath)")
     }
     return count
   }
@@ -876,7 +876,7 @@ final class ReportParser {
     maximumChildren: Int
   ) throws -> ([StorageNode], SunburstItem) {
     guard let parentNode = records[parentPath] else {
-      throw ReportParserError.invalidReport("找不到節點 \(parentPath)")
+      throw ReportParserError.invalidReport("無法從報告讀取此資料夾的容量紀錄：\(parentPath)。請重新掃描此位置。")
     }
 
     var childrenByParent: [String: [StorageNode]] = [:]

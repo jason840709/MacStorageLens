@@ -1,0 +1,140 @@
+#!/usr/bin/env python3
+from __future__ import annotations
+
+import json
+import subprocess
+import sys
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+checks: list[dict[str, object]] = []
+
+
+def run(*args: str) -> str:
+    return subprocess.check_output(args, cwd=ROOT, text=True).strip()
+
+
+def read(path: str) -> str:
+    return (ROOT / path).read_text(encoding="utf-8")
+
+
+def check(name: str, condition: bool, detail: str = "") -> None:
+    checks.append({
+        "name": name,
+        "status": "passed" if condition else "failed",
+        "passed": bool(condition),
+        "detail": detail,
+    })
+
+
+def skip(name: str, detail: str) -> None:
+    checks.append({"name": name, "status": "not_run", "passed": None, "detail": detail})
+
+
+metadata = read("Sources/MacStorageLens/AppMetadata.swift")
+models = read("Sources/MacStorageLens/Models.swift")
+app_model = read("Sources/MacStorageLens/AppModel.swift")
+cleaner = read("Sources/MacStorageLens/CleanerView.swift")
+cleanup = read("Sources/MacStorageLens/CleanupEngine.swift")
+index = read("Sources/MacStorageLens/CleanupIncrementalIndex.swift")
+external_executor = read("Sources/MacStorageLens/ExternalVolumeCleanupExecutor.swift")
+knowledge = read("Sources/MacStorageLens/SystemJunkKnowledge.swift")
+build = read("scripts/建立並啟動.command")
+verify = read("scripts/驗證原始碼.command")
+source_review = read("docs/MACSAI_SOURCE_REVIEW.md")
+notices = read("THIRD_PARTY_NOTICES.md")
+
+check("metadata_version", 'fallbackVersion = "2.0.0"' in metadata)
+check("metadata_build", 'fallbackBuild = "36"' in metadata)
+check("developer", 'developer = "Jason Chen"' in metadata and "Jason Chen" in build)
+check("scanner_version", 'scannerVersion = "2.5.4"' in metadata)
+check("build_identity", 'APP_VERSION="2.0.0"' in build and 'APP_BUILD="36"' in build)
+check("six_profiles_preserved", all(name in models for name in [
+    'case ultraConservative = "超級保守"', 'case conservative = "保守"',
+    'case balanced = "平衡"', 'case aggressive = "激進"',
+    'case ultraAggressive = "超激進"', 'case custom = "自定義"'
+]))
+check(
+    "native_profile_ui_integration",
+    "CleanupRuleIntegrationMapCard" not in cleaner
+    and "1.7.5 清理規則整併位置" not in cleaner
+    and "CleanupProfileScopeGrid" in cleaner
+    and "model.cleanupConfiguration.requiresScope" in cleaner
+    and "UltraAggressiveOptionsStrip" in cleaner
+    and "model.setPresetOptionalCleanupScope" in cleaner
+    and "model.cleanupProfile == .ultraAggressive" in cleaner
+    and "model.cleanupProfile == .custom" in cleaner,
+)
+check(
+    "l5_optional_scopes_default_off",
+    "var requiresExplicitPresetOptIn" in models
+    and "let presetOptionalScopes: Set<CleanupScope>" in models
+    and "@Published var cleanupPresetOptionalScopes: Set<CleanupScope> = []" in app_model
+    and "func setPresetOptionalCleanupScope" in app_model,
+)
+check("trash_bins_scope", "case trashBins" in models and "case trashBinContents" in models)
+check("trash_bins_l5", "case .highImpactUserData, .trashBins, .systemManagedReview" in models)
+check("trash_bins_current_uid", "String(currentUserID)" in cleanup and "~/.Trash" in cleanup)
+check("trash_bins_direct_only", "filemanager_remove_validated_current_user_trash_matches" in cleanup)
+check("trash_bins_external_root_validation", "validateExternalVolumeRoot" in cleanup and "volumesRootURL" in external_executor)
+check("trash_bins_not_default_custom", ".trashBins" not in app_model.split("@Published var cleanupFolderCustomScopes", 1)[0].split("@Published var cleanupCustomScopes", 1)[1])
+check("cleanup_index_schema_7", "currentSchemaVersion = 7" in index)
+check("source_review_present", "MacSai source review" in source_review and "Trash" in source_review)
+check("bsd_notice_present", "BSD 3-Clause" in notices and (ROOT / "ThirdParty/MacSai-LICENSE.txt").is_file())
+check("system_junk_knowledge_present", "enum SystemJunkKnowledge" in knowledge)
+check("trash_fixture_wired", "TrashBinsCleanupAudit.swift" in verify)
+
+check("unicode_fixture_wired", "UnicodePathAudit.swift" in verify and "LC_ALL=C" in verify)
+check("current_scanner_resources", all((ROOT / "Resources" / name).is_file() for name in [
+    "mac-system-storage-tree-v2.5.4.command", "mac-system-storage-tree-core-v2.5.4.command"
+]))
+
+workbench = read("Sources/MacStorageLens/CleanupWorkbenchView.swift")
+smart = read("Sources/MacStorageLens/SmartCleanupEngine.swift")
+file_safety = read("Sources/MacStorageLens/CleanupWorkbenchFileSafety.swift")
+check("new_cleaner_and_advanced_entry", "struct CleanerView" in workbench and "AdvancedCleanupView()" in workbench and "struct AdvancedCleanupView" in cleaner)
+check("one_click_revalidation", "executeAutomatic" in smart and "currentlyApproved" in smart and "unlinkPlannedFile" in smart)
+check("descriptor_deletion_boundary", "O_NOFOLLOW" in file_safety and "unlinkat" in file_safety and "fstatat" in file_safety)
+check("new_fixtures_wired", all(name in verify for name in ["SmartCleanupAudit.swift", "CleanupWorkbenchFixtureAudit.swift", "CleanupWorkbenchBoundaryAudit.swift"]))
+check("public_cleanup_docs", all((ROOT / "docs" / name).is_file() for name in ["cleanup-logic.md", "cleanup-development.md", "cleanup-research.md"]))
+
+if not (ROOT / ".git").is_dir():
+    skip(
+        "git_provenance",
+        "來源封裝不含 .git；公開來源內容檢查已完成。",
+    )
+else:
+    try:
+        head = run("git", "rev-parse", "HEAD")
+        if subprocess.run(["git", "rev-parse", "--verify", "-q", "v2.0.0^{commit}"], cwd=ROOT).returncode == 0:
+            tagged = run("git", "rev-parse", "v2.0.0^{commit}")
+            ancestor = subprocess.run(["git", "merge-base", "--is-ancestor", tagged, head], cwd=ROOT).returncode == 0
+            check("tag_v2_0_0_is_ancestor", ancestor, f"{tagged} <= {head}")
+            paths = ["Package.swift", "Sources", "Resources", "scripts", "Verification"]
+            matches = subprocess.run(["git", "diff", "--quiet", tagged, "--", *paths], cwd=ROOT).returncode == 0
+            check("tag_v2_0_0_matches_release_code", matches)
+        else:
+            skip("tag_v2_0_0_points_to_head", "尚未建立 v2.0.0 tag。")
+
+    except Exception as exc:
+        check("git_provenance", False, str(exc))
+
+passed = sum(1 for item in checks if item["status"] == "passed")
+failed = sum(1 for item in checks if item["status"] == "failed")
+not_run = sum(1 for item in checks if item["status"] == "not_run")
+payload = {
+    "version": "2.0.0",
+    "build": 36,
+    "passed": passed,
+    "failed": failed,
+    "notRun": not_run,
+    "total": len(checks),
+    "checks": checks,
+}
+text = json.dumps(payload, indent=2, ensure_ascii=False, sort_keys=True) + "\n"
+if len(sys.argv) > 1:
+    Path(sys.argv[1]).write_text(text, encoding="utf-8")
+else:
+    print(text, end="")
+if failed:
+    raise SystemExit(1)

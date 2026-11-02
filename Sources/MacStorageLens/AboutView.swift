@@ -7,19 +7,11 @@ struct AboutView: View {
   var body: some View {
     ScrollView {
       VStack(alignment: .leading, spacing: 18) {
-        LensPageHeader(
-          eyebrow: "關於",
-          title: "關於磁碟透視",
-          subtitle: "版本、開發責任、隱私邊界與容量模型集中在同一個可操作頁面。"
-        )
-
         hero
         productAndSafetyPanel
 
         HStack {
           Text(AppMetadata.copyright)
-          Spacer()
-          Text("本機分析 · 無遙測 · 清理候選逐項確認")
         }
         .font(.caption2)
         .foregroundStyle(.tertiary)
@@ -70,12 +62,6 @@ struct AboutView: View {
             .foregroundStyle(.secondary)
         }
 
-        Text(
-          "由 \(AppMetadata.developer) 開發，與 \(AppMetadata.developmentAssistant) 協作。早期版本與 GPT‑5.6 Pro 協作。"
-        )
-        .font(.callout)
-        .foregroundStyle(.secondary)
-
         HStack(spacing: 8) {
           LensStatusBadge(
             title: AppMetadata.versionLine,
@@ -95,21 +81,25 @@ struct AboutView: View {
   private var heroActions: some View {
     HStack(spacing: 8) {
       Button {
-        model.copyText(versionSummary, status: "已複製版本與開發資訊")
+        model.copyText(versionSummary, status: "已複製版本資訊")
       } label: {
-        Label("複製版本", systemImage: "doc.on.doc")
+        Label("複製版本資訊", systemImage: "doc.on.doc")
       }
       .buttonStyle(LensButtonStyle(kind: .primary, compact: true))
 
       Button {
         model.openPathInFinder(model.library.rootURL.path)
       } label: {
-        Label("本機資料", systemImage: "folder")
+        Label("資料存放位置", systemImage: "folder")
       }
       .buttonStyle(LensButtonStyle(kind: .secondary, compact: true))
 
-      Button("設定") { model.destination = .settings }
-        .buttonStyle(LensButtonStyle(kind: .quiet, compact: true))
+      Link(
+        "清理規則",
+        destination: URL(
+          string: "https://github.com/jason840709/MacStorageLens/blob/main/docs/cleanup-logic.md")!
+      )
+      .buttonStyle(LensButtonStyle(kind: .quiet, compact: true))
     }
   }
 
@@ -119,13 +109,10 @@ struct AboutView: View {
         VStack(alignment: .leading, spacing: 14) {
           HStack(alignment: .top) {
             LensSectionHeading(
-              "產品與開發資料",
-              subtitle: "每個欄位都可點擊複製，方便回報、接手與核對版本。",
+              "開發與資料處理",
               symbol: "info.square.fill"
             )
             Spacer()
-            LensStatusBadge(
-              title: "點擊欄位即可複製", symbol: "cursorarrow.click", tint: LensTheme.accentSoft)
           }
 
           LazyVGrid(
@@ -135,62 +122,18 @@ struct AboutView: View {
           ) {
             AboutCopyFact(
               title: "開發者", value: AppMetadata.developer,
-              detail: "產品與程式碼主要負責人。", symbol: "person.fill", tint: LensTheme.accentSoft)
+              detail: "", symbol: "person.fill", tint: LensTheme.accentSoft)
             AboutCopyFact(
-              title: "AI 協作", value: AppMetadata.developmentAssistant,
-              detail: "用於研究、程式實作、檢查與文件整理。", symbol: "wand.and.stars", tint: LensTheme.plum)
+              title: "開發協作", value: AppMetadata.developmentAssistant,
+              detail: "早期版本與 GPT‑5.6 Pro 協作。", symbol: "wand.and.stars", tint: LensTheme.plum)
             AboutCopyFact(
-              title: "App", value: AppMetadata.versionLine,
-              detail: "目前安裝的 App 版本與 build。", symbol: "app.badge", tint: LensTheme.sand)
+              title: "資料處理", value: "本機處理，不上傳掃描資料",
+              detail: "不傳送使用統計。", symbol: "lock.fill", tint: LensTheme.sage)
             AboutCopyFact(
-              title: "掃描器", value: "v\(AppMetadata.scannerVersion)",
-              detail: "內附的唯讀容量樹掃描核心版本。", symbol: "externaldrive", tint: LensTheme.sage)
-            AboutCopyFact(
-              title: "介面", value: "Native SwiftUI / AppKit",
-              detail: "原生 macOS 介面與 Finder／系統設定整合。", symbol: "macwindow", tint: LensTheme.accentSoft
-            )
-            AboutCopyFact(
-              title: "資料處理", value: "完全在本機",
-              detail: "掃描報告、候選與操作紀錄不會上傳。", symbol: "lock.fill", tint: LensTheme.sage)
-            AboutCopyFact(
-              title: "網路與遙測", value: "無",
-              detail: "App 沒有分析遙測或雲端回傳。", symbol: "antenna.radiowaves.left.and.right.slash",
-              tint: LensTheme.clay)
-            AboutCopyFact(
-              title: "清理模型", value: "六級掃描／逐項確認",
-              detail: "候選預設不勾選；可逆操作只進 Finder 可見垃圾桶，直接刪除則不經垃圾桶。", symbol: "checkmark.shield",
+              title: "清理方式", value: "一鍵清理與手動選取",
+              detail: "一鍵清理直接移除符合規則的快取與舊診斷；手動選取的項目移到垃圾桶。進階規則另有直接刪除選項。", symbol: "checkmark.shield",
               tint: LensTheme.sand)
           }
-        }
-        .padding(18)
-
-        Divider().padding(.leading, 64).opacity(0.62)
-
-        VStack(alignment: .leading, spacing: 13) {
-          HStack(alignment: .top) {
-            LensSectionHeading(
-              "容量與安全模型",
-              subtitle: "下列入口直接連到會影響判讀或清理的功能。",
-              symbol: "arrow.triangle.branch"
-            )
-            Spacer()
-          }
-
-          HStack(spacing: 8) {
-            Button("容量帳務") { model.destination = .overview }
-              .buttonStyle(LensButtonStyle(kind: .primary, compact: true))
-            Button("資料樹") { model.destination = .browser }
-              .buttonStyle(LensButtonStyle(kind: .secondary, compact: true))
-            Button("安全清理") { model.destination = .cleaner }
-              .buttonStyle(LensButtonStyle(kind: .secondary, compact: true))
-            Button("完整磁碟權限") { ScannerLauncher.openFullDiskAccessSettings() }
-              .buttonStyle(LensButtonStyle(kind: .quiet, compact: true))
-          }
-
-          Text("一般檔案、APFS／快照／其他卷與未解析差額會分層顯示；未知容量不會被推定為垃圾。")
-            .font(.caption)
-            .foregroundStyle(.secondary)
-            .fixedSize(horizontal: false, vertical: true)
         }
         .padding(18)
 
@@ -212,7 +155,7 @@ struct AboutView: View {
               .background(LensTheme.accent.opacity(0.12), in: RoundedRectangle(cornerRadius: 10))
 
             VStack(alignment: .leading, spacing: 3) {
-              Text("開發歷程")
+              Text("版本更新")
                 .font(.headline)
               Text(latestReleaseSummary)
                 .font(.caption)
@@ -294,7 +237,8 @@ private struct AboutCopyFact: View {
     }
     .buttonStyle(.plain)
     .onHover { hovered = $0 }
-    .lensHoverHelp(title: title, detail: "\(detail) 點擊即可複製。", value: value, tint: tint)
+    .lensHoverHelp(
+      title: title, detail: detail.isEmpty ? "點擊複製。" : "\(detail) 點擊複製。", value: value, tint: tint)
   }
 }
 
